@@ -1,3 +1,4 @@
 sqlalchemy
 fastapi[all]
 python-dotenv
+jinja2
