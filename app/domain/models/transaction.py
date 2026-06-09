@@ -15,7 +15,7 @@ class Transaction(Base):
         default=uuid.uuid4,
         primary_key=True
     )
-    user_id: Mapped[UUID] = mapped_column(
+    journal_id: Mapped[UUID] = mapped_column(
         ForeignKey(
             "journals.id",ondelete="CASCADE"
         )
@@ -37,8 +37,15 @@ class Transaction(Base):
         server_default=func.now()
     )
 
-    transaction_entries = Mapped[list["TransactionEntries"]] = relationship(
-        back_populates="transaction"
+    transaction_entries:Mapped[list["TransactionEntries"]] = relationship(
+        "TransactionEntries",
+        back_populates="transaction",
+        cascade="all, delete-orphan"
+    )
+
+    journals: Mapped["Journal"] = relationship(
+        "Journal",
+        back_populates="transactions"
     )
 
 class TransactionEntries(Base):
@@ -67,4 +74,9 @@ class TransactionEntries(Base):
         String(3),
         nullable=False, 
         default="USD"
+    )
+
+    transaction: Mapped["Transaction"] = relationship(
+        "Transaction",
+        back_populates="transaction_entries"
     )

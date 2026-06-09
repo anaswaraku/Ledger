@@ -16,7 +16,7 @@ class Journal(Base):
 
     user_id: Mapped[UUID] = mapped_column(
         UUID,
-        ForeignKey("user.id"),)
+        ForeignKey("users.id"),)
     
     name: Mapped[str] = mapped_column(
             String(255),
@@ -33,10 +33,10 @@ class Journal(Base):
     )
 
     user: Mapped["User"] = relationship("User",
-                                        back_populates="journal")
+                                        back_populates="journals")
     
     transactions: Mapped[list["Transaction"]]=relationship(
-        back_populates="journal"
+        back_populates="journals"
     )
     accounts: Mapped[list["Accounts"]]=relationship(
         back_populates="journal"

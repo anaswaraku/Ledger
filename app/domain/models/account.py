@@ -1,4 +1,4 @@
-from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey,Numeric
+from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey,Numeric, Date
 from decimal import Decimal
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infrastructure.db import Base
@@ -21,7 +21,7 @@ class User(Base):
         nullable=False
     )
 
-    password: Mapped[str] = mapped_column(
+    password_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False
     )
@@ -46,6 +46,7 @@ class Accounts(Base):
         )
     )
     name: Mapped[str] = mapped_column(
+        String(500),
         unique=True,
         nullable=False
     )
@@ -56,6 +57,11 @@ class Accounts(Base):
     
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP, server_default=func.now()
+    )
+
+    journal: Mapped["Journal"] =  relationship(
+        "Journal",
+        back_populates="accounts"
     )
 
 class MarketPrices(Base):
