@@ -1,0 +1,3 @@
+sqlalchemy
+fastapi[all]
+python-dotenv
