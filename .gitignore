@@ -1,3 +1,4 @@
 # Python virtual environments
 .conda/
 .env/
+.env
