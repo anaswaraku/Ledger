@@ -20,24 +20,27 @@ class Transaction(Base):
     code: Mapped[str] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
 
-    transaction_entries: Mapped[list["TransactionEntries"]] = relationship(
-        "TransactionEntries", back_populates="transaction", cascade="all, delete-orphan"
+    transaction_entries: Mapped[list["TransactionEntry"]] = relationship(
+        "TransactionEntry", back_populates="transaction", cascade="all, delete-orphan"
     )
 
     journal: Mapped["Journal"] = relationship("Journal", back_populates="transactions")
 
 
-class TransactionEntries(Base):
+class TransactionEntry(Base):
     __tablename__ = "transaction_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
     transaction_id: Mapped[UUID] = mapped_column(
         ForeignKey("transactions.id", ondelete="CASCADE")
     )
-    account: Mapped[str] = mapped_column(String(500), nullable=False)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey("accounts.id"), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(28, 10), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
 
     transaction: Mapped["Transaction"] = relationship(
         "Transaction", back_populates="transaction_entries"
+    )
+    account: Mapped["Account"] = relationship(
+        "Account", back_populates="transaction_entries"
     )

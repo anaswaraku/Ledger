@@ -1,39 +1,20 @@
-from sqlalchemy import (
-    String,
-    UUID,
-    TIMESTAMP,
-    ForeignKey,
-    Numeric,
-    Date,
-    UniqueConstraint,
-)
-from decimal import Decimal
+from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infrastructure.db import Base
 import uuid
 from datetime import datetime
 from sqlalchemy.sql import func
+from enum import Enum
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
-
-    journals: Mapped[list["Journal"]] = relationship("Journal", back_populates="user")
-
-
+class AccountType(str, Enum):
+    ASSETS ="Assets"
+    LIABILITIES = "Liabilities"
+    EQUITY = "Equity"
+    INCOME = "Income"
+    EXPENSES = "Expenses"
 class Account(Base):
     __tablename__ = "accounts"
-    __table_args__ = (
-        UniqueConstraint("journal_id", "name", name="uq_accounts_journal_id_name"),
-    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
     journal_id: Mapped[UUID] = mapped_column(
@@ -41,19 +22,11 @@ class Account(Base):
     )
     name: Mapped[str] = mapped_column(String(500), nullable=False)
 
-    account_type: Mapped[str] = mapped_column(String(50))
+    account_type: Mapped[AccountType] = mapped_column(Enum(AccountType),nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
 
     journal: Mapped["Journal"] = relationship("Journal", back_populates="accounts")
-
-
-class MarketPrices(Base):
-    __tablename__ = "marketprices"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-    currency_from: Mapped[str] = mapped_column(String(3))
-    currency_to: Mapped[str] = mapped_column(String(3))
-    price: Mapped[Decimal] = mapped_column(Numeric(28, 10), nullable=False)
-
-    date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    transaction_entries: Mapped[list["TransactionEntry"]] = relationship(
+        "TransactionEntry", back_populates="account"
+    )

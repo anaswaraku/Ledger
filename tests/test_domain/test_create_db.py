@@ -11,9 +11,11 @@ sys.path.insert(0, project_root)
 from app.infrastructure.db.database import Base, engine
 
 # These imports are necessary for Base.metadata to discover the tables.
-from app.domain.models.account import User, Account, MarketPrices
+from app.domain.models.user import User
+from app.domain.models.account import Account
+from app.domain.models.market_price import MarketPrices
 from app.domain.models.journal import Journal
-from app.domain.models.transaction import Transaction, TransactionEntries
+from app.domain.models.transaction import Transaction, TransactionEntry
 
 
 async def main():
