@@ -1,46 +1,56 @@
-from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey, Date, Numeric
+from datetime import date
+
+from sqlalchemy import Date
+from sqlalchemy import ForeignKey
+from sqlalchemy import String
+from sqlalchemy import Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.infrastructure.db import Base
-import uuid
-from datetime import datetime
-from sqlalchemy.sql import func
-from decimal import Decimal
+
+from app.models.base import Base
+from app.models.mixins import UUIDMixin, TimestampMixin
 
 
-class Transaction(Base):
+class Transaction(
+    UUIDMixin,
+    TimestampMixin,
+    Base,
+):
     __tablename__ = "transactions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-    journal_id: Mapped[UUID] = mapped_column(
-        ForeignKey("journals.id", ondelete="CASCADE")
-    )
-    date: Mapped[datetime] = mapped_column(Date, nullable=False)
-    description: Mapped[str] = mapped_column(String(500))
-    payee: Mapped[str] = mapped_column(String(255))
-    code: Mapped[str] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
-
-    transaction_entries: Mapped[list["TransactionEntry"]] = relationship(
-        "TransactionEntry", back_populates="transaction", cascade="all, delete-orphan"
+    journal_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("journals.id", ondelete="CASCADE"),
+        nullable=False,
     )
 
-    journal: Mapped["Journal"] = relationship("Journal", back_populates="transactions")
-
-
-class TransactionEntry(Base):
-    __tablename__ = "transaction_entries"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-    transaction_id: Mapped[UUID] = mapped_column(
-        ForeignKey("transactions.id", ondelete="CASCADE")
+    date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
     )
-    account_id: Mapped[UUID] = mapped_column(ForeignKey("accounts.id"), nullable=False)
-    amount: Mapped[Decimal] = mapped_column(Numeric(28, 10), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD")
 
-    transaction: Mapped["Transaction"] = relationship(
-        "Transaction", back_populates="transaction_entries"
+    description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
     )
-    account: Mapped["Account"] = relationship(
-        "Account", back_populates="transaction_entries"
+
+    payee: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    code: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
+    journal = relationship(
+        "Journal",
+        back_populates="transactions",
+    )
+
+    entries = relationship(
+        "TransactionEntry",
+        back_populates="transaction",
+        cascade="all, delete-orphan",
     )

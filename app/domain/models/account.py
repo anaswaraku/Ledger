@@ -1,33 +1,53 @@
-from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey, UniqueConstraint, Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.infrastructure.db import Base
-import uuid
-from datetime import datetime
-from sqlalchemy.sql import func
 from enum import Enum
+
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey
+from sqlalchemy import String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base
+from app.models.mixins import UUIDMixin, TimestampMixin
 
 
 class AccountType(str, Enum):
-    ASSETS ="Assets"
-    LIABILITIES = "Liabilities"
-    EQUITY = "Equity"
-    INCOME = "Income"
-    EXPENSES = "Expenses"
+    ASSET = "ASSET"
+    LIABILITY = "LIABILITY"
+    EQUITY = "EQUITY"
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
 
-class Account(Base):
+
+class Account(
+    UUIDMixin,
+    TimestampMixin,
+    Base,
+):
     __tablename__ = "accounts"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-    journal_id: Mapped[UUID] = mapped_column(
-        ForeignKey("journals.id", ondelete="CASCADE")
+    journal_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("journals.id", ondelete="CASCADE"),
+        nullable=False,
     )
-    name: Mapped[str] = mapped_column(String(500), nullable=False)
 
-    account_type: Mapped[AccountType] = mapped_column(SAEnum(AccountType), nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+        index=True,
+    )
 
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
+    account_type: Mapped[AccountType] = mapped_column(
+        SQLEnum(AccountType),
+        nullable=False,
+    )
 
-    journal: Mapped["Journal"] = relationship("Journal", back_populates="accounts")
-    transaction_entries: Mapped[list["TransactionEntry"]] = relationship(
-        "TransactionEntry", back_populates="account"
+    journal = relationship(
+        "Journal",
+        back_populates="accounts",
+    )
+
+    entries = relationship(
+        "TransactionEntry",
+        back_populates="account",
     )

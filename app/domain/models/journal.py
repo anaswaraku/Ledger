@@ -1,27 +1,41 @@
-from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey
+from sqlalchemy import String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.infrastructure.db import Base
-import uuid
-from datetime import datetime
-from sqlalchemy.sql import func
+
+from app.models.base import Base
+from app.models.mixins import UUIDMixin, TimestampMixin
 
 
-class Journal(Base):
+class Journal(
+    UUIDMixin,
+    TimestampMixin,
+    Base,
+):
     __tablename__ = "journals"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
-
-    user_id: Mapped[UUID] = mapped_column(
-        UUID,
-        ForeignKey("users.id"),
+    name: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
     )
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
 
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
+    owner_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+    )
 
-    user: Mapped["User"] = relationship("User", back_populates="journals")
+    accounts = relationship(
+        "Account",
+        back_populates="journal",
+        cascade="all, delete-orphan",
+    )
 
-    transactions: Mapped[list["Transaction"]] = relationship(back_populates="journal")
-    accounts: Mapped[list["Account"]] = relationship(back_populates="journal")
+    transactions = relationship(
+        "Transaction",
+        back_populates="journal",
+        cascade="all, delete-orphan",
+    )
