@@ -1,1 +1,1 @@
-from app.infrastructure.db.database import Base, SessionLocal, engine
+from app.infrastructure.db.database import Base, AsyncSessionLocal, engine

@@ -1,4 +1,4 @@
-from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey, UniqueConstraint
+from sqlalchemy import String, UUID, TIMESTAMP, ForeignKey, UniqueConstraint, Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.infrastructure.db import Base
 import uuid
@@ -13,6 +13,7 @@ class AccountType(str, Enum):
     EQUITY = "Equity"
     INCOME = "Income"
     EXPENSES = "Expenses"
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -22,7 +23,7 @@ class Account(Base):
     )
     name: Mapped[str] = mapped_column(String(500), nullable=False)
 
-    account_type: Mapped[AccountType] = mapped_column(Enum(AccountType),nullable=False)
+    account_type: Mapped[AccountType] = mapped_column(SAEnum(AccountType), nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
 
