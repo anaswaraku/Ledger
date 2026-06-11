@@ -73,6 +73,9 @@ async def home(request: Request):
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="auth/login.html")
 
+@app.get("/dashbord", tags=["Web"], summary="Dashboard")
+async def dashboard(request: Request):
+    return templates.TemplateResponse(request=request, name="auth/dashboard.html")
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:
