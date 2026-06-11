@@ -1,10 +1,7 @@
 # app/domain/models/mixins.py
 """
 Reusable SQLAlchemy ORM column mixins.
-
-All domain models that need a primary key and audit timestamps
-should inherit from UUIDMixin and TimestampMixin (in addition to Base).
-
+Add UUID as id and created_at/updated_at
 Inheritance order must be: (UUIDMixin, TimestampMixin, Base)
 """
 import uuid

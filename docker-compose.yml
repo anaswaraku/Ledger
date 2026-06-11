@@ -4,7 +4,7 @@ services:
     container_name: ledger_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ledge_user
+      POSTGRES_USER: ledge_users
       POSTGRES_PASSWORD: ledgeweb
       POSTGRES_DB: ledger
     ports:
@@ -12,7 +12,7 @@ services:
     volumes:
       - ledger_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ledge_user -d ledger"]
+      test: ["CMD-SHELL", "pg_isready -U ledge_users -d ledger"]
       interval: 10s
       timeout: 5s
       retries: 5

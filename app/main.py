@@ -1,9 +1,6 @@
 # app/main.py
 """
-Ledger Web Application — FastAPI entry point.
-
-Start the server:
-    uvicorn app.main:app --reload
+Ledger Web Application 
 """
 import logging
 from contextlib import asynccontextmanager
@@ -40,7 +37,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# ── Middleware ────────────────────────────────────────────────────────────────
+#  Middleware 
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,7 +47,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ───────────────────────────────────────────────────────────────────
+#  Routers ─
 
 from app.api.v1.routers import auth, transactions, accounts, reports, files, journals  # noqa: E402
 
@@ -61,7 +58,7 @@ app.include_router(accounts.router)
 app.include_router(reports.router)
 app.include_router(files.router)
 
-# ── Root endpoints ────────────────────────────────────────────────────────────
+#  Root endpoints 
 
 @app.get("/", tags=["Health"], summary="Application root")
 async def home() -> dict[str, Any]:
