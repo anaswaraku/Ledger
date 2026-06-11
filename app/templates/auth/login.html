@@ -4,6 +4,54 @@
 {% block title %}Login — Ledger{% endblock %}
 
 {% block content %}
+<style>/* Labels */
+label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #444;
+    display: inline-block;
+    margin-bottom: 4px;
+}
+
+/* Inputs */
+input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Input focus effect */
+input:focus {
+    border-color: #4a90e2;
+    outline: none;
+    box-shadow: 0 0 4px rgba(74, 144, 226, 0.4);
+}
+
+/* Button */
+button {
+    padding: 10px 16px;
+    background-color: #4a90e2;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+/* Button hover */
+button:hover {
+    background-color: #357abd;
+}
+
+/* Button click effect */
+button:active {
+    transform: scale(0.97);
+}</style>
 <h2>Login</h2>
 <form id="login-form" hx-post="/api/v1/auth/login" hx-ext="json-enc">
     <label for="email">Email</label><br>
