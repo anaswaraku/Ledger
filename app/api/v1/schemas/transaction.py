@@ -1,10 +1,14 @@
-from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
-from datetime import date, datetime
+# app/api/v1/schemas/transaction.py
+from datetime import date as date_type, datetime
 from decimal import Decimal
+from uuid import UUID
 
-#  Transaction Entry 
+from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.domain.rules.double_entry import DoubleEntryError, validate_double_entry
+
+
+# ── Transaction Entry ─────────────────────────────────────────────────────────
 
 class TransactionEntryBase(BaseModel):
     account_id: UUID
@@ -14,13 +18,13 @@ class TransactionEntryBase(BaseModel):
     @field_validator("currency")
     @classmethod
     def currency_uppercase(cls, v: str) -> str:
-        return v.upper()
+        return v.strip().upper()
 
     @field_validator("amount")
     @classmethod
     def amount_not_zero(cls, v: Decimal) -> Decimal:
         if v == 0:
-            raise ValueError("amount must not be zero")
+            raise ValueError("Entry amount must not be zero.")
         return v
 
 
@@ -41,11 +45,10 @@ class TransactionEntryResponse(TransactionEntryBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-#  Transaction 
-
+# ── Transaction ───────────────────────────────────────────────────────────────
 
 class TransactionBase(BaseModel):
-    date: date
+    date: date_type
     description: str | None = None
     payee: str | None = None
     code: str | None = None
@@ -57,22 +60,23 @@ class TransactionCreate(TransactionBase):
 
     @field_validator("entries")
     @classmethod
-    def validate_double_entry(
-        cls, entries: list[TransactionEntryCreate]
+    def validate_entries_double_entry(
+        cls, entries: list[TransactionEntryCreate],
     ) -> list[TransactionEntryCreate]:
-        """Enforce double-entry: debits must equal credits (net sum == 0)."""
-        if len(entries) < 2:
-            raise ValueError("a transaction must have at least 2 entries")
-        total = sum(e.amount for e in entries)
-        if total != 0:
-            raise ValueError(
-                f"transaction entries must balance to zero (current sum: {total})"
-            )
+        """
+        Delegate to the domain rule — single source of truth.
+        Converts DoubleEntryError → ValueError so Pydantic renders it as a
+        422 validation error with a clear message.
+        """
+        try:
+            validate_double_entry([e.amount for e in entries])
+        except DoubleEntryError as exc:
+            raise ValueError(str(exc))
         return entries
 
 
 class TransactionUpdate(BaseModel):
-    date: date | None = None
+    date: date_type | None = None
     description: str | None = None
     payee: str | None = None
     code: str | None = None

@@ -1,13 +1,17 @@
+# app/domain/models/account.py
+import uuid
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Enum as SAEnum, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
-from app.models.mixins import UUIDMixin, TimestampMixin
+from app.domain.models.base import Base
+from app.domain.models.mixins import UUIDMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.domain.models.journal import Journal
+    from app.domain.models.transaction_entry import TransactionEntry
 
 
 class AccountType(str, Enum):
@@ -18,17 +22,22 @@ class AccountType(str, Enum):
     EXPENSE = "EXPENSE"
 
 
-class Account(
-    UUIDMixin,
-    TimestampMixin,
-    Base,
-):
+class Account(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "accounts"
 
-    journal_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+    __table_args__ = (
+        UniqueConstraint(
+            "journal_id",
+            "name",
+            name="uq_account_journal_name",
+        ),
+    )
+
+    journal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("journals.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
     name: Mapped[str] = mapped_column(
@@ -38,16 +47,17 @@ class Account(
     )
 
     account_type: Mapped[AccountType] = mapped_column(
-        SQLEnum(AccountType),
+        SAEnum(AccountType, native_enum=False),
         nullable=False,
     )
 
-    journal = relationship(
+    # Relationships
+    journal: Mapped["Journal"] = relationship(
         "Journal",
         back_populates="accounts",
     )
 
-    entries = relationship(
+    entries: Mapped[list["TransactionEntry"]] = relationship(
         "TransactionEntry",
         back_populates="account",
     )

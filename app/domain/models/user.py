@@ -1,20 +1,41 @@
-from sqlalchemy import String, UUID, TIMESTAMP
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.infrastructure.db import Base
+# app/domain/models/user.py
 import uuid
-from datetime import datetime
-from sqlalchemy.sql import func
+from typing import TYPE_CHECKING
+
+from sqlalchemy import String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.domain.models.base import Base
+from app.domain.models.mixins import UUIDMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.domain.models.journal import Journal
 
 
-class User(Base):
+class User(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default=uuid.uuid4, primary_key=True)
+    email: Mapped[str] = mapped_column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
 
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
 
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="user",
+    )
 
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.now())
-
-    journals: Mapped[list["Journal"]] = relationship("Journal", back_populates="user")
+    # Relationships
+    journals: Mapped[list["Journal"]] = relationship(
+        "Journal",
+        back_populates="owner",
+        cascade="all, delete-orphan",
+    )

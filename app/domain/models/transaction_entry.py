@@ -1,32 +1,39 @@
+# app/domain/models/transaction_entry.py
+import uuid
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey
-from sqlalchemy import Numeric
-from sqlalchemy import String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import ForeignKey, Numeric, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
-from app.models.mixins import UUIDMixin, TimestampMixin
+from app.domain.models.base import Base
+from app.domain.models.mixins import UUIDMixin
+
+if TYPE_CHECKING:
+    from app.domain.models.transaction import Transaction
+    from app.domain.models.account import Account
 
 
-class TransactionEntry(
-    UUIDMixin,
-    TimestampMixin,
-    Base,
-):
+class TransactionEntry(UUIDMixin, Base):
+    """
+    A single posting in a double-entry transaction.
+    Two or more entries make up one transaction; they must sum to zero.
+    """
+
     __tablename__ = "transaction_entries"
 
-    transaction_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+    transaction_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("transactions.id", ondelete="CASCADE"),
         nullable=False,
+        index=True,
     )
 
-    account_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("accounts.id", ondelete="RESTRICT"),
         nullable=False,
+        index=True,
     )
 
     amount: Mapped[Decimal] = mapped_column(
@@ -40,12 +47,13 @@ class TransactionEntry(
         default="USD",
     )
 
-    transaction = relationship(
+    # Relationships
+    transaction: Mapped["Transaction"] = relationship(
         "Transaction",
         back_populates="entries",
     )
 
-    account = relationship(
+    account: Mapped["Account"] = relationship(
         "Account",
         back_populates="entries",
     )

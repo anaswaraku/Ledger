@@ -1,23 +1,71 @@
 # app/dependencies.py
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.infrastructure.db.database import get_db
-from app.core.security import decode_token
+"""
+Shared FastAPI dependencies.
 
-bearer = HTTPBearer()
+These are injected into route handlers via Depends().
+"""
+import logging
+
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import decode_token
+from app.domain.models.user import User
+from app.infrastructure.db.database import get_db
+from app.infrastructure.db.repositories.user_repo import UserRepository
+
+logger = logging.getLogger(__name__)
+
+bearer = HTTPBearer(auto_error=True)
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer),
     db: AsyncSession = Depends(get_db),
-):
+) -> User:
+    """
+    Decode the Bearer JWT and return the authenticated User.
+
+    Raises:
+        HTTPException 401: Token is missing, expired, or invalid.
+        HTTPException 401: User referenced in the token no longer exists.
+    """
     token = credentials.credentials
+
     try:
-        user_id = decode_token(token)
-    except Exception:
+        user_id_str = decode_token(token)
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    # fetch user from DB and return — fill in after repo is ready
-    return user_id
+    except jwt.InvalidTokenError as exc:
+        logger.warning("Invalid JWT received: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    import uuid
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token subject.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = await UserRepository(db).get_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account not found.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user

@@ -1,25 +1,29 @@
+# app/domain/models/transaction.py
+import uuid
 from datetime import date
+from typing import TYPE_CHECKING
 
-from sqlalchemy import Date
-from sqlalchemy import ForeignKey
-from sqlalchemy import String
-from sqlalchemy import Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Date, ForeignKey, Index, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
-from app.models.mixins import UUIDMixin, TimestampMixin
+from app.domain.models.base import Base
+from app.domain.models.mixins import UUIDMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.domain.models.journal import Journal
+    from app.domain.models.transaction_entry import TransactionEntry
 
 
-class Transaction(
-    UUIDMixin,
-    TimestampMixin,
-    Base,
-):
+class Transaction(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "transactions"
 
-    journal_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True),
+    __table_args__ = (
+        Index("ix_transaction_journal_date", "journal_id", "date"),
+        Index("ix_transaction_payee", "payee"),
+    )
+
+    journal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
         ForeignKey("journals.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -32,6 +36,7 @@ class Transaction(
     description: Mapped[str] = mapped_column(
         Text,
         nullable=False,
+        default="",
     )
 
     payee: Mapped[str | None] = mapped_column(
@@ -44,13 +49,15 @@ class Transaction(
         nullable=True,
     )
 
-    journal = relationship(
+    # Relationships
+    journal: Mapped["Journal"] = relationship(
         "Journal",
         back_populates="transactions",
     )
 
-    entries = relationship(
+    entries: Mapped[list["TransactionEntry"]] = relationship(
         "TransactionEntry",
         back_populates="transaction",
         cascade="all, delete-orphan",
+        lazy="selectin",  # auto-load entries for async sessions
     )
