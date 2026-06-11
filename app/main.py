@@ -69,6 +69,10 @@ templates = Jinja2Templates(directory="app/templates")
 async def home(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
+@app.get("/auth/login", tags=["Web"], summary="Login Page")
+async def login_page(request: Request):
+    return templates.TemplateResponse(request=request, name="auth/login.html")
+
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:
