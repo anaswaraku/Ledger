@@ -73,6 +73,10 @@ async def home(request: Request):
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="auth/login.html")
 
+@app.get("/auth/register", tags=["Web"], summary="Register Page")
+async def register_page(request: Request):
+    return templates.TemplateResponse(request=request, name="auth/register.html")
+
 @app.get("/dashbord", tags=["Web"], summary="Dashboard")
 async def dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="auth/dashboard.html")
