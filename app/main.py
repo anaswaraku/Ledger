@@ -60,13 +60,14 @@ app.include_router(files.router)
 
 #  Root endpoints 
 
+from fastapi import Request
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="app/templates")
+
 @app.get("/", tags=["Health"], summary="Application root")
-async def home() -> dict[str, Any]:
-    return {
-        "message": "Ledger Web Application is running",
-        "docs": "/docs",
-        "version": "1.0.0",
-    }
+async def home(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
 
 
 @app.get("/health", tags=["Health"], summary="Health check")
