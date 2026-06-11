@@ -1,5 +1,5 @@
 # Python virtual environments
-.conda/
+.conda/ 
 .env/
 .env
 **/__pycache__/__pycache__/
