@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Journals — Ledger{% endblock %}
+
+{% block content %}
+<h2>Journals</h2>
+
+<!-- Create Journal Form -->
+<h3>Create New Journal</h3>
+<form id="create-journal-form" hx-post="/api/v1/journals/" hx-ext="json-enc"
+      hx-target="#journal-list" hx-swap="beforeend">
+    <label for="j-name">Name</label><br>
+    <input type="text" id="j-name" name="name" required><br><br>
+
+    <label for="j-desc">Description (optional)</label><br>
+    <input type="text" id="j-desc" name="description"><br><br>
+
+    <button type="submit">Create Journal</button>
+</form>
+<div id="journal-create-msg"></div>
+<hr>
+
+<!-- Journal List -->
+<h3>Your Journals</h3>
+<div id="journal-list"
+     hx-get="/api/v1/journals/"
+     hx-trigger="load"
+     hx-target="#journal-list">
+    Loading...
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Render the journal list after initial load
+    document.body.addEventListener("htmx:afterRequest", function (e) {
+        const el = e.detail.elt;
+
+        // Initial list load
+        if (el && el.id === "journal-list" && e.detail.xhr.status === 200) {
+            const journals = JSON.parse(e.detail.xhr.response);
+            renderJournalList(journals);
+            return;
+        }
+
+        // After journal creation
+        if (el && el.id === "create-journal-form") {
+            const msg = document.getElementById("journal-create-msg");
+            if (e.detail.xhr.status === 201) {
+                msg.innerText = "Journal created.";
+                el.reset();
+                // Reload list
+                htmx.ajax("GET", "/api/v1/journals/", {target: "#journal-list", swap: "outerHTML"});
+            } else {
+                try {
+                    msg.innerText = JSON.parse(e.detail.xhr.response).detail || "Error creating journal.";
+                } catch { msg.innerText = "Error creating journal."; }
+            }
+        }
+    });
+
+    function renderJournalList(journals) {
+        const el = document.getElementById("journal-list");
+        if (!journals || journals.length === 0) {
+            el.innerHTML = "<p>No journals yet.</p>";
+            return;
+        }
+        el.innerHTML = "<table border='1'>" +
+            "<thead><tr><th>Name</th><th>Description</th><th>Created</th><th>Actions</th></tr></thead>" +
+            "<tbody>" + journals.map(j => `
+                <tr id="journal-row-${j.id}">
+                    <td><a href="/journals/${j.id}">${j.name}</a></td>
+                    <td>${j.description || "—"}</td>
+                    <td>${new Date(j.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button
+                            hx-delete="/api/v1/journals/${j.id}"
+                            hx-confirm="Delete journal '${j.name}'?"
+                            hx-target="#journal-row-${j.id}"
+                            hx-swap="outerHTML">Delete</button>
+                    </td>
+                </tr>`
+            ).join("") + "</tbody></table>";
+        htmx.process(el); // ensure HTMX picks up dynamic elements
+    }
+</script>
+{% endblock %}

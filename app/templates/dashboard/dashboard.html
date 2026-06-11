@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Ledger{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<section>
+    <h3>Your Journals</h3>
+    <div id="journal-summary"
+         hx-get="/api/v1/journals/"
+         hx-trigger="load"
+         hx-target="#journal-summary">
+        Loading...
+    </div>
+</section>
+
+<br>
+<a href="/journals">Manage Journals →</a> |
+<a href="/transactions">View Transactions →</a> |
+<a href="/reports">Reports →</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Replace the raw JSON list with a readable summary
+    document.body.addEventListener("htmx:afterRequest", function (e) {
+        if (!e.detail.elt || e.detail.elt.id !== "journal-summary") return;
+        if (e.detail.xhr.status === 200) {
+            const journals = JSON.parse(e.detail.xhr.response);
+            const el = document.getElementById("journal-summary");
+            if (journals.length === 0) {
+                el.innerHTML = "<p>No journals yet. <a href='/journals'>Create one</a>.</p>";
+            } else {
+                el.innerHTML = "<ul>" + journals.map(j =>
+                    `<li><a href="/journals/${j.id}">${j.name}</a>${j.description ? " — " + j.description : ""}</li>`
+                ).join("") + "</ul>";
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ledger{% endblock %}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+</head>
+<body>
+
+{% if not auth_page %}
+<nav>
+    <strong>Ledger</strong> |
+    <a href="/dashboard">Dashboard</a> |
+    <a href="/journals">Journals</a> |
+    <a href="/accounts">Accounts</a> |
+    <a href="/transactions">Transactions</a> |
+    <a href="/reports">Reports</a> |
+    <a href="#" onclick="logout()">Logout</a>
+</nav>
+<hr>
+{% endif %}
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+<script>
+    // Inject JWT into every HTMX request
+    document.body.addEventListener("htmx:configRequest", function (e) {
+        const token = localStorage.getItem("access_token");
+        if (token) {
+            e.detail.headers["Authorization"] = "Bearer " + token;
+        }
+    });
+
+    function logout() {
+        localStorage.removeItem("access_token");
+        window.location.href = "/";
+    }
+
+    // Global HTMX error handler
+    document.body.addEventListener("htmx:responseError", function (e) {
+        const status = e.detail.xhr.status;
+        if (status === 401) {
+            localStorage.removeItem("access_token");
+            window.location.href = "/auth/login";
+        }
+    });
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

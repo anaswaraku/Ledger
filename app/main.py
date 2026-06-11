@@ -60,26 +60,62 @@ app.include_router(files.router)
 
 #  Root endpoints 
 
+from uuid import UUID
+
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="app/templates")
 
-@app.get("/", tags=["Health"], summary="Application root")
+
+@app.get("/", tags=["Web"], summary="Application root")
 async def home(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
+
 
 @app.get("/auth/login", tags=["Web"], summary="Login Page")
 async def login_page(request: Request):
     return templates.TemplateResponse(request=request, name="auth/login.html")
 
+
 @app.get("/auth/register", tags=["Web"], summary="Register Page")
 async def register_page(request: Request):
     return templates.TemplateResponse(request=request, name="auth/register.html")
 
-@app.get("/dashbord", tags=["Web"], summary="Dashboard")
+
+@app.get("/dashboard", tags=["Web"], summary="Dashboard")
 async def dashboard(request: Request):
-    return templates.TemplateResponse(request=request, name="auth/dashboard.html")
+    return templates.TemplateResponse(request=request, name="dashboard/dashboard.html")
+
+
+@app.get("/journals", tags=["Web"], summary="Journals list")
+async def journals_page(request: Request):
+    return templates.TemplateResponse(request=request, name="journals/journals.html")
+
+
+@app.get("/journals/{journal_id}", tags=["Web"], summary="Journal detail")
+async def journal_detail_page(request: Request, journal_id: UUID):
+    return templates.TemplateResponse(
+        request=request,
+        name="journals/detail.html",
+        context={"journal_id": str(journal_id)},
+    )
+
+
+@app.get("/accounts", tags=["Web"], summary="Accounts page")
+async def accounts_page(request: Request):
+    return templates.TemplateResponse(request=request, name="accounts/accounts.html")
+
+
+@app.get("/transactions", tags=["Web"], summary="Transactions page")
+async def transactions_page(request: Request):
+    return templates.TemplateResponse(request=request, name="transactions/transactions.html")
+
+
+@app.get("/reports", tags=["Web"], summary="Reports page")
+async def reports_page(request: Request):
+    return templates.TemplateResponse(request=request, name="reports/reports.html")
+
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:

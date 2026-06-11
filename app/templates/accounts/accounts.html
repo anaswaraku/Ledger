@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Accounts — Ledger{% endblock %}
+
+{% block content %}
+<h2>Accounts</h2>
+
+<p>Select a journal to view and manage its accounts.</p>
+
+<div>
+    <label for="journal-select">Journal: </label>
+    <select id="journal-select" onchange="onJournalChange(this.value)">
+        <option value="">-- select journal --</option>
+    </select>
+</div>
+
+<hr>
+
+<section id="accounts-section" style="display:none">
+    <h3>Accounts</h3>
+
+    <form id="create-account-form">
+        <label for="acc-name">Name</label><br>
+        <input type="text" id="acc-name" name="name" required><br><br>
+
+        <label for="acc-type">Type</label><br>
+        <select id="acc-type" name="account_type">
+            <option value="ASSET">Asset</option>
+            <option value="LIABILITY">Liability</option>
+            <option value="EQUITY">Equity</option>
+            <option value="INCOME">Income</option>
+            <option value="EXPENSE">Expense</option>
+        </select><br><br>
+
+        <button type="submit">Add Account</button>
+    </form>
+    <div id="account-msg"></div>
+
+    <hr>
+    <div id="account-list"><p>Loading...</p></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedJournalId = null;
+
+    function fetchJson(url, opts = {}) {
+        const token = localStorage.getItem("access_token");
+        return fetch(url, {
+            ...opts,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token ? "Bearer " + token : "",
+                ...(opts.headers || {})
+            }
+        }).then(r => {
+            if (r.status === 401) { localStorage.removeItem("access_token"); window.location.href = "/auth/login"; }
+            return r.json();
+        });
+    }
+
+    // Load journals into select on page load
+    fetchJson("/api/v1/journals/").then(journals => {
+        const sel = document.getElementById("journal-select");
+        journals.forEach(j => {
+            const opt = document.createElement("option");
+            opt.value = j.id;
+            opt.textContent = j.name;
+            sel.appendChild(opt);
+        });
+    });
+
+    function onJournalChange(jid) {
+        selectedJournalId = jid;
+        if (!jid) { document.getElementById("accounts-section").style.display = "none"; return; }
+        document.getElementById("accounts-section").style.display = "block";
+        loadAccounts();
+    }
+
+    function loadAccounts() {
+        fetchJson("/api/v1/accounts/?journal_id=" + selectedJournalId).then(renderAccountList);
+    }
+
+    function renderAccountList(accounts) {
+        const el = document.getElementById("account-list");
+        if (accounts.length === 0) { el.innerHTML = "<p>No accounts yet.</p>"; return; }
+        el.innerHTML = "<table border='1'><thead><tr><th>Name</th><th>Type</th><th>Created</th></tr></thead><tbody>" +
+            accounts.map(a =>
+                `<tr><td>${a.name}</td><td>${a.account_type}</td><td>${new Date(a.created_at).toLocaleDateString()}</td></tr>`
+            ).join("") + "</tbody></table>";
+    }
+
+    document.getElementById("create-account-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const msg = document.getElementById("account-msg");
+        const body = {
+            journal_id: selectedJournalId,
+            name: document.getElementById("acc-name").value,
+            account_type: document.getElementById("acc-type").value,
+        };
+        fetchJson("/api/v1/accounts/", { method: "POST", body: JSON.stringify(body) }).then(data => {
+            if (data.id) {
+                msg.innerText = "Account '" + data.name + "' created.";
+                e.target.reset();
+                loadAccounts();
+            } else {
+                msg.innerText = data.detail || JSON.stringify(data);
+            }
+        });
+    });
+</script>
+{% endblock %}

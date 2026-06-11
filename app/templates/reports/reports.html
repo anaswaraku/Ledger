@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Reports — Ledger{% endblock %}
+
+{% block content %}
+<h2>Reports</h2>
+
+<div>
+    <label for="journal-select">Journal: </label>
+    <select id="journal-select" onchange="onJournalChange(this.value)">
+        <option value="">-- select journal --</option>
+    </select>
+</div>
+
+<hr>
+
+<section id="reports-section" style="display:none">
+    <nav>
+        <button onclick="loadReport('balance-sheet')">Balance Sheet</button>
+        <button onclick="loadReport('income-statement')">Income Statement</button>
+        <button onclick="loadReport('cash-flow')">Cash Flow</button>
+    </nav>
+
+    <!-- Date range for period reports -->
+    <div id="date-range" style="display:none;margin-top:0.5rem">
+        <label>From: <input type="date" id="report-from"></label>
+        <label>To: <input type="date" id="report-to"></label>
+        <button onclick="loadReport(currentReport)">Run</button>
+    </div>
+
+    <hr>
+    <div id="report-output"><p>Select a report above.</p></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let selectedJournalId = null;
+    let currentReport = null;
+
+    function fetchJson(url, opts = {}) {
+        const token = localStorage.getItem("access_token");
+        return fetch(url, {
+            ...opts,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": token ? "Bearer " + token : "",
+                ...(opts.headers || {})
+            }
+        }).then(r => {
+            if (r.status === 401) { localStorage.removeItem("access_token"); window.location.href = "/auth/login"; }
+            return r.json();
+        });
+    }
+
+    fetchJson("/api/v1/journals/").then(journals => {
+        const sel = document.getElementById("journal-select");
+        journals.forEach(j => {
+            const opt = document.createElement("option");
+            opt.value = j.id;
+            opt.textContent = j.name;
+            sel.appendChild(opt);
+        });
+    });
+
+    function onJournalChange(jid) {
+        selectedJournalId = jid;
+        document.getElementById("reports-section").style.display = jid ? "block" : "none";
+        document.getElementById("report-output").innerHTML = "<p>Select a report above.</p>";
+        currentReport = null;
+    }
+
+    function loadReport(name) {
+        currentReport = name;
+        const output = document.getElementById("report-output");
+        output.innerHTML = "<p>Loading...</p>";
+
+        const isPeriod = name === "income-statement";
+        document.getElementById("date-range").style.display = isPeriod ? "block" : "none";
+
+        let url = `/api/v1/reports/${name}?journal_id=${selectedJournalId}&currency=USD`;
+
+        if (isPeriod) {
+            const from = document.getElementById("report-from").value;
+            const to = document.getElementById("report-to").value;
+            if (!from || !to) {
+                output.innerHTML = "<p>Please select a date range.</p>";
+                return;
+            }
+            url += `&date_from=${from}&date_to=${to}`;
+        }
+
+        fetchJson(url).then(data => {
+            if (name === "balance-sheet") renderBalanceSheet(data);
+            else if (name === "income-statement") renderIncomeStatement(data);
+            else output.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+        }).catch(() => {
+            output.innerHTML = "<p>Error loading report.</p>";
+        });
+    }
+
+    function renderBalanceSheet(data) {
+        const el = document.getElementById("report-output");
+        if (!data || !data.assets) {
+            el.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            return;
+        }
+        el.innerHTML = `
+            <h3>Balance Sheet — as of ${data.as_of} (${data.currency})</h3>
+            ${renderSection(data.assets)}
+            ${renderSection(data.liabilities)}
+            ${renderSection(data.equity)}
+            <p><strong>Balanced: ${data.is_balanced ? "Yes ✓" : "No ✗"}</strong></p>
+        `;
+    }
+
+    function renderIncomeStatement(data) {
+        const el = document.getElementById("report-output");
+        if (!data || !data.income) {
+            el.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            return;
+        }
+        el.innerHTML = `
+            <h3>Income Statement — ${data.date_from} to ${data.date_to} (${data.currency})</h3>
+            <h4>Income</h4>
+            ${renderLineItems(data.income)}
+            <p>Total Income: <strong>${data.total_income}</strong></p>
+            <h4>Expenses</h4>
+            ${renderLineItems(data.expenses)}
+            <p>Total Expenses: <strong>${data.total_expenses}</strong></p>
+            <p>Net Income: <strong>${data.net_income}</strong></p>
+        `;
+    }
+
+    function renderSection(section) {
+        return `<h4>${section.label}</h4>
+            ${renderLineItems(section.lines)}
+            <p>Total: <strong>${section.total}</strong></p>`;
+    }
+
+    function renderLineItems(lines) {
+        if (!lines || lines.length === 0) return "<p>None</p>";
+        return "<table border='1'><thead><tr><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>" +
+            lines.map(l => `<tr><td>${l.account_name}</td><td>${l.account_type}</td><td>${l.balance}</td></tr>`).join("") +
+            "</tbody></table>";
+    }
+</script>
+{% endblock %}
