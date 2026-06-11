@@ -16,6 +16,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
 
   app:
     build: .
@@ -31,6 +33,12 @@ services:
     volumes:
       - .:/code
     working_dir: /code
+    networks:
+      - default
 
 volumes:
   ledger_pg_data:
+
+networks:
+  default:
+    name: ledger_network
