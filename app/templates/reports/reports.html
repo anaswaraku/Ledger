@@ -75,7 +75,7 @@
         const output = document.getElementById("report-output");
         output.innerHTML = "<p>Loading...</p>";
 
-        const isPeriod = name === "income-statement";
+        const isPeriod = name === "income-statement" || name=="cash-flow";
         document.getElementById("date-range").style.display = isPeriod ? "block" : "none";
 
         let url = `/api/v1/reports/${name}?journal_id=${selectedJournalId}&currency=USD`;
@@ -93,6 +93,7 @@
         fetchJson(url).then(data => {
             if (name === "balance-sheet") renderBalanceSheet(data);
             else if (name === "income-statement") renderIncomeStatement(data);
+            else if (name =="cash-flow") renderCashFlow(data);
             else output.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
         }).catch(() => {
             output.innerHTML = "<p>Error loading report.</p>";
@@ -159,6 +160,26 @@
         return "<table border='1'><thead><tr><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>" +
             lines.map(l => `<tr><td>${l.account_name}</td><td>${l.account_type}</td><td>${l.balance}</td></tr>`).join("") +
             "</tbody></table>";
+    }
+
+    function renderCashFlow(data){
+        const el = document.getElementById("report-output");
+        if (!data || data.beginning_balance ===undefined){
+            el.innerHTML="<pre>"+JSON.stringify(data, null, 2)+"</pre>";
+            return;
+        }
+        el.innerHTML=`
+        <h3> Cash Flow Statement - ${date.date_from} to ${data.date_to}</h3
+        <p><strong>Beginning Cash Balance</strong> $${parseFloat(data.beginning_balance).toFixed(2)}</p>
+        <br>
+        
+        ${renderDictSection("Cash Inflows", data.inflows)}
+        <br>
+        ${renderDictSection("Cash Outflows", data.outflows)}
+        <br>
+        <p><strong>Net Cash Flow: </strong> $${parseFloat(data.net_cash_flow).toFixed(2)}</p>
+        <hr>
+        <p><strong>Ending Cash Balance: ${parseFloat(data.ending_balance).toFixed(2)}</strong></p>`;
     }
 </script>
 {% endblock %}

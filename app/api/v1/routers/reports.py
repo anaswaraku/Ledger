@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.report import BalanceSheetResponse, IncomeStatementResponse
+from app.api.v1.schemas.report import BalanceSheetResponse, IncomeStatementResponse, CashFlowStatementResponse
 from app.application.services.report_service import ReportService
 from app.dependencies import get_current_user
 from app.domain.models.user import User
@@ -64,8 +64,19 @@ async def get_income_report(
     )
 
 
-@router.get("/cash-flow")
-def get_cash_flow():
-    """Cash Flow Report"""
+@router.get("/cash-flow", response_model=CashFlowStatementResponse, summary="Generate cash-flow report",)
+async def get_cash_flow(
+    journal_id: UUID = Query(...),
+    date_from: date = Query(...),
+    date_to: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+)->CashFlowStatementResponse:
+    """Cash Flow Report-for specific period"""
     # /api/v1/reports/cash-flow
-    return "cash flow"
+    return await _make_report_service(db).generate_cash_flow(
+        owner_id=current_user.id,
+        journal_id=journal_id,
+        date_from=date_from,
+        date_to=date_to
+    )

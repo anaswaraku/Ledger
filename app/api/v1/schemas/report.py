@@ -69,3 +69,13 @@ class IncomeStatementResponse(BaseModel):
     total_income: Decimal
     total_expenses: Decimal
     net_income: Decimal
+
+#movement of cash over a specific period
+class CashFlowStatementResponse(BaseModel):
+    date_from: date
+    date_to: date
+    beginning_balance: Decimal
+    inflows: dict[str, Decimal]
+    outflows: dict[str, Decimal]
+    net_cash_flow: Decimal
+    ending_balance: Decimal

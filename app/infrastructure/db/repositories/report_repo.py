@@ -46,3 +46,44 @@ class ReportRepository:
         result = await self.db.execute(query)
         # SQLAlchemy rows act like tuples, but we return explicit typing
         return [(row.name, row.account_type, row.balance or Decimal("0.0")) for row in result.all()]
+
+    #why cash instead of account?
+    async def get_cash_balance(self, journal_id:UUID, as_of:date)->Decimal:
+        """Return the total balanace of all Cash or Bank accounts right before the given date"""
+        query = (
+            select(func.sum(TransactionEntry.amount).label("balance"))
+            .select_from(Account)
+            .join(TransactionEntry, Account.id == TransactionEntry.account_id)
+            .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
+            .where(Account.journal_id==journal_id)
+            .where(Transaction.date<as_of)
+            .where(Account.account_type==AccountType.ASSET)
+            .where(Account.name.ilike("%cash")|Account.name.ilike("%bank"))
+        )
+        result=await self.db.execute(query)
+        row=result.scalar_one_or_none()
+        return row or Decimal("0.0")
+    
+    async def get_cash_movements(
+            self, journal_id:UUID,
+            date_from: date,
+            date_to: date,
+    )->list[tuple[str, Decimal]]:
+        """Returns the net movement for each account during the period"""
+        query=(
+            select(
+                Account.name,
+                func.sum(TransactionEntry.amount).label("movement")
+            )
+            .select_from(Account)
+            .join(TransactionEntry, Account.id == TransactionEntry.account_id)
+            .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
+            .where(Account.journal_id==journal_id)
+            .where(Transaction.date>=date_from)
+            .where(Transaction.date<=date_to)
+            .where(Account.account_type==AccountType.ASSET)
+            .where(Account.name.ilike("%cash")|Account.name.ilike("%bank"))
+            .group_by(Account.id, Account.name)
+        )
+        result = await self.db.execute(query)
+        return [(row.name, row.movement or Decimal("0.0")) for row in result.all()]
