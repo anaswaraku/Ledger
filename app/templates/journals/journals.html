@@ -1,9 +1,17 @@
 {% extends "base.html" %}
-
+{% set auth_page = false %}
 {% block title %}Journals — Ledger{% endblock %}
 
 {% block content %}
 <h2>Journals</h2>
+<style>
+    body{
+          display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+</style>
 
 <!-- Create Journal Form -->
 <h3>Create New Journal</h3>

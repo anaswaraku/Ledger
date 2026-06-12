@@ -1,13 +1,22 @@
 {% extends "base.html" %}
 
+{% set auth_page = false %}
 {% block title %}Accounts — Ledger{% endblock %}
 
 {% block content %}
 <h2>Accounts</h2>
 
 <p>Select a journal to view and manage its accounts.</p>
+<style>
+        body{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+</style>
 
-<div>
+<div class="account_container">
     <label for="journal-select">Journal: </label>
     <select id="journal-select" onchange="onJournalChange(this.value)">
         <option value="">-- select journal --</option>
