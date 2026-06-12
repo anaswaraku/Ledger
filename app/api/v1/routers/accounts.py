@@ -4,13 +4,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.account import AccountCreate, AccountResponse
+from app.api.v1.schemas.account import AccountCreate, AccountResponse, RegisterEntryResponse
 from app.application.services.account_service import AccountService
 from app.dependencies import get_current_user
 from app.domain.models.user import User
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
+from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
 
 router = APIRouter(prefix="/api/v1/accounts", tags=["Accounts"])
 
@@ -19,6 +20,7 @@ def _make_service(db: AsyncSession) -> AccountService:
     return AccountService(
         account_repo=AccountRepository(db),
         journal_repo=JournalRepository(db),
+        transaction_repo=TransactionRepository(db),
     )
 
 
@@ -77,15 +79,19 @@ async def search_accounts(
 
 
 @router.get(
-    "/{account_name}/register",
-    response_model=list[dict],
+    "/{account_id}/register",
+    response_model=list[RegisterEntryResponse],
     summary="Account register — transaction history with running balance (FR-4.4)",
 )
 async def get_account_register(
-    account_name: str,
+    account_id: UUID,
     journal_id: UUID = Query(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[dict]:
+) -> list[RegisterEntryResponse]:
     """Phase 2: Returns transaction history for an account with running balance."""
-    return []
+    return await _make_service(db).get_account_register(
+        owner_id=current_user.id,
+        journal_id=journal_id,
+        account_id=account_id
+    )

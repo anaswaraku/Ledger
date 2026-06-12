@@ -50,32 +50,22 @@ class TrialBalanceResponse(BaseModel):
 #  Balance Sheet 
 
 
-class BalanceSheetSection(BaseModel):
-    label: str  # e.g. "Assets", "Liabilities", "Equity"
-    lines: list[ReportLineItem]
-    total: Decimal
-
-
 class BalanceSheetResponse(BaseModel):
-    journal_id: UUID
-    as_of: date
-    currency: str
-    assets: BalanceSheetSection
-    liabilities: BalanceSheetSection
-    equity: BalanceSheetSection
-    is_balanced: bool  # assets == liabilities + equity
+    date: date
+    assets: dict[str, Decimal]
+    liabilities: dict[str, Decimal]
+    equity: dict[str, Decimal]
+    net: Decimal
 
 
 #  Income Statement 
 
 
 class IncomeStatementResponse(BaseModel):
-    journal_id: UUID
     date_from: date
     date_to: date
-    currency: str
-    income: list[ReportLineItem]
-    expenses: list[ReportLineItem]
+    income: dict[str, Decimal]
+    expenses: dict[str, Decimal]
     total_income: Decimal
     total_expenses: Decimal
-    net_income: Decimal  # total_income - total_expenses
+    net_income: Decimal

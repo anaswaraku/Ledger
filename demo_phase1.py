@@ -42,7 +42,7 @@ async def run_demo():
         print(f"Accounts created! \n   - assets:checking ({checking_id})\n   - expenses:groceries ({groceries_id})\n")
 
         # 5. Create Double-Entry Transaction
-        print("5️⃣ Creating a double-entry transaction ($50 for groceries)...")
+        print("5. Creating a double-entry transaction ($50 for groceries)...")
         txn_data = {
             "journal_id": journal_id,
             "date": "2026-06-11",
@@ -55,21 +55,21 @@ async def run_demo():
         }
         resp = await client.post("/api/v1/transactions/", json=txn_data, headers=headers)
         if resp.status_code == 201:
-            print(f"✅ Transaction created successfully with ID: {resp.json()['id']}\n")
+            print(f"Transaction created successfully with ID: {resp.json()['id']}\n")
         else:
-            print(f"❌ Transaction failed: {resp.text}\n")
+            print(f"Transaction failed: {resp.text}\n")
 
         # 6. Fetch Transactions
-        print("6️⃣ Fetching all transactions for the journal...")
+        print("6. Fetching all transactions for the journal...")
         resp = await client.get(f"/api/v1/transactions/?journal_id={journal_id}", headers=headers)
         txns = resp.json()
-        print(f"✅ Retrieved {len(txns)} transaction(s):")
+        print(f"Retrieved {len(txns)} transaction(s):")
         for t in txns:
-            print(f"   📅 {t['date']} | {t['payee']} | {t['description']}")
+            print(f"   - {t['date']} | {t['payee']} | {t['description']}")
             for e in t['entries']:
                 print(f"      - Account {e['account_id']}: {e['amount']} {e['currency']}")
         
-        print("\n🎉 Phase 1 End-to-End flow works perfectly!")
+        print("\nPhase 1 End-to-End flow works perfectly!")
 
 if __name__ == "__main__":
     asyncio.run(run_demo())

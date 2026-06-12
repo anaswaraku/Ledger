@@ -8,6 +8,9 @@ from app.domain.models.account import Account, AccountType
 from app.domain.rules.account_validation import AccountValidationError, validate_account_name
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
+from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
+from app.api.v1.schemas.account import RegisterEntryResponse
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +22,11 @@ class AccountService:
         self,
         account_repo: AccountRepository,
         journal_repo: JournalRepository,
+        transaction_repo: TransactionRepository,
     ) -> None:
         self.account_repo = account_repo
         self.journal_repo = journal_repo
+        self.transaction_repo = transaction_repo
 
     async def create(
         self,
@@ -84,3 +89,33 @@ class AccountService:
         if not journal:
             raise HTTPException(status_code=404, detail="Journal not found.")
         return await self.account_repo.search_by_name_prefix(journal_id, prefix)
+
+    async def get_account_register(
+        self, owner_id: uuid.UUID, journal_id: uuid.UUID, account_id: uuid.UUID
+    ) -> list[RegisterEntryResponse]:
+        """Returns chronological list of transactions with a running balance."""
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=404, detail="Journal not found.")
+            
+        account = await self.account_repo.get_by_id(account_id)
+        if not account or account.journal_id != journal_id:
+            raise HTTPException(status_code=404, detail="Account not found.")
+
+        entries = await self.transaction_repo.get_account_entries(account_id)
+        
+        register = []
+        running_balance = Decimal("0.0")
+        
+        for txn, entry in entries:
+            running_balance += entry.amount
+            register.append(RegisterEntryResponse(
+                transaction_id=txn.id,
+                date=txn.date,
+                payee=txn.payee,
+                description=txn.description,
+                amount=entry.amount,
+                running_balance=running_balance
+            ))
+            
+        return register

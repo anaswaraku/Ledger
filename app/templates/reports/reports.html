@@ -106,12 +106,30 @@
             return;
         }
         el.innerHTML = `
-            <h3>Balance Sheet — as of ${data.as_of} (${data.currency})</h3>
-            ${renderSection(data.assets)}
-            ${renderSection(data.liabilities)}
-            ${renderSection(data.equity)}
-            <p><strong>Balanced: ${data.is_balanced ? "Yes ✓" : "No ✗"}</strong></p>
+            <h3>Balance Sheet — as of ${data.date}</h3>
+            ${renderDictSection("Assets", data.assets)}
+            ${renderDictSection("Liabilities", data.liabilities)}
+            ${renderDictSection("Equity", data.equity)}
+            <p><strong>Net Assets: ${parseFloat(data.net).toFixed(2)}</strong></p>
         `;
+    }
+
+    function renderDictSection(title, dictData) {
+        let rows = "";
+        let total = 0;
+        for (const [name, balance] of Object.entries(dictData)) {
+            const val = parseFloat(balance);
+            rows += `<tr><td>${name}</td><td>${val.toFixed(2)}</td></tr>`;
+            total += val;
+        }
+        if (!rows) rows = "<tr><td colspan='2'>None</td></tr>";
+        
+        return `<h4>${title}</h4>
+            <table border='1'>
+                <thead><tr><th>Account</th><th>Balance</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <p>Total: <strong>${total.toFixed(2)}</strong></p>`;
     }
 
     function renderIncomeStatement(data) {
@@ -121,14 +139,12 @@
             return;
         }
         el.innerHTML = `
-            <h3>Income Statement — ${data.date_from} to ${data.date_to} (${data.currency})</h3>
-            <h4>Income</h4>
-            ${renderLineItems(data.income)}
-            <p>Total Income: <strong>${data.total_income}</strong></p>
-            <h4>Expenses</h4>
-            ${renderLineItems(data.expenses)}
-            <p>Total Expenses: <strong>${data.total_expenses}</strong></p>
-            <p>Net Income: <strong>${data.net_income}</strong></p>
+            <h3>Income Statement — ${data.date_from} to ${data.date_to}</h3>
+            ${renderDictSection("Income", data.income)}
+            <p>Total Income: <strong>${parseFloat(data.total_income).toFixed(2)}</strong></p>
+            ${renderDictSection("Expenses", data.expenses)}
+            <p>Total Expenses: <strong>${parseFloat(data.total_expenses).toFixed(2)}</strong></p>
+            <p>Net Income: <strong>${parseFloat(data.net_income).toFixed(2)}</strong></p>
         `;
     }
 

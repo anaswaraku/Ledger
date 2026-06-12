@@ -1,5 +1,6 @@
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, date
+from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from app.domain.models.account import AccountType
@@ -34,3 +35,12 @@ class AccountResponse(AccountBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RegisterEntryResponse(BaseModel):
+    transaction_id: UUID
+    date: date
+    payee: str | None = None
+    description: str | None = None
+    amount: Decimal
+    running_balance: Decimal

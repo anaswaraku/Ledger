@@ -114,3 +114,16 @@ class TransactionRepository:
         await self.db.delete(txn)
         await self.db.commit()
         return True
+
+    async def get_account_entries(
+        self, account_id: uuid.UUID
+    ) -> list[tuple[Transaction, TransactionEntry]]:
+        query = (
+            select(Transaction, TransactionEntry)
+            .join(TransactionEntry, Transaction.id == TransactionEntry.transaction_id)
+            .where(TransactionEntry.account_id == account_id)
+            .order_by(Transaction.date.asc(), Transaction.created_at.asc())
+        )
+        result = await self.db.execute(query)
+        # result.all() returns a list of Row objects containing (Transaction, TransactionEntry)
+        return list(result.all())
