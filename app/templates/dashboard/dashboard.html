@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% set dashboard = true %}
+
 {% block title %}Dashboard — Ledger{% endblock %}
 
 {% block content %}
@@ -15,9 +15,8 @@
             <h3 class="text-lg font-semibold text-gray-900">Networth</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
-        <p class="mt-2 text-sm text-gray-500" id="networth-display">Click to view</p>
+        <p class="mt-2 text-sm text-gray-500" id="networth-display"></p>
     </a>
-
 
 
     <a href="/journals"
@@ -25,6 +24,7 @@
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+            
         </div>
         <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
     </a>
@@ -72,15 +72,12 @@
 
 {% block scripts %}
 <script>
-
-    async function showNetWorth(event) {
-        if (event) event.preventDefault(); // Prevents jumping to the top of the page
-        
+    async function showNetWorth() {
         const displayEl = document.getElementById("networth-display");
         if (!displayEl) return;
-        
+
         displayEl.innerHTML = '<span class="animate-pulse">Loading...</span>';
-        
+
         try {
             const token = localStorage.getItem("access_token");
             const response = await fetch('/api/v1/reports/net-worth', {
@@ -88,29 +85,39 @@
                     'Authorization': 'Bearer ' + token
                 }
             });
-            
+
             if (response.status === 401) {
                 window.location.href = "/auth/login";
                 return;
             }
             if (!response.ok) throw new Error("Failed to load net worth");
-            
+
             const data = await response.json();
-            
-            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
-            
+
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
+
             displayEl.innerHTML = `
-                <span class="text-brand font-semibold text-xl">${formatter.format(data.net_worth)}</span><br>
-                <span class="text-xs text-gray-400">Assets: ${formatter.format(data.assets)} | Liabilities: ${formatter.format(data.liabilities)}</span>
-            `;
-            
-            // Remove the onclick event so it doesn't refetch unnecessarily if clicked again
-            document.getElementById("networth").onclick = null;
+            <span class="text-brand font-semibold text-xl">
+                ${formatter.format(data.net_worth)}
+            </span><br>
+            <span class="text-xs text-gray-400">
+                Assets: ${formatter.format(data.assets)} |
+                Liabilities: ${formatter.format(data.liabilities)}
+            </span>
+        `;
         } catch (error) {
             console.error(error);
             displayEl.innerHTML = '<span class="text-red-500">Error loading data</span>';
         }
     }
+
+    // ✅ Automatically call it when page loads
+    document.addEventListener("DOMContentLoaded", showNetWorth);
+
+
     // Replace the raw JSON list with a readable summary
     document.body.addEventListener("htmx:afterRequest", function (e) {
         if (!e.detail.elt || e.detail.elt.id !== "journal-summary") return;
