@@ -1,10 +1,25 @@
 # app/main.py
 
 
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.logging import setup_logging
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifecycle: startup → serve → shutdown."""
+    setup_logging()
+    logger = logging.getLogger("ledger")
+    logger.info("Ledger Web Application starting up…")
+    yield
+    # Graceful shutdown: dispose the async engine connection pool
+    from app.infrastructure.db.database import engine
+    await engine.dispose()
+    logger.info("Ledger Web Application shut down cleanly.")
 
 app = FastAPI(
     title="Ledger Web Application",
