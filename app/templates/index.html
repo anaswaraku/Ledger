@@ -4,55 +4,21 @@
 {% block title %}Ledger{% endblock %}
 
 {% block content %}
-<style>
-    body {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        margin: 0;
-    }
-
-    .btn {
-        background-color: #047baa;
-        /* Green background */
-        border: none;
-        /* Remove default border */
-        color: white;
-        /* White text */
-        padding: 14px 14px;
-        /* Space inside button */
-        text-align: center;
-        font-size: 16px;
-        border-radius: 8px;
-        /* Rounded corners */
-        cursor: pointer;
-        /* Pointer on hover */
-        transition: background-color 0.3s, transform 0.2s;
-        /* Smooth effects */
-    }
-
-    .btn:hover {
-        background-color: #02228a;
-        /* Darker green on hover */
-        transform: translateY(-2px);
-        /* Slight lift effect */
-    }
-
-    .btn:active {
-        transform: translateY(0);
-        /* Pressed effect */
-    }
-</style>
-
-<div class="container">
-
-    <h1 style="text-align: center;">Ledger</h1>
-    <p style="text-align: center; padding-bottom: 30px;">Double-entry Accounting Tool</p>
-    <div style="text-align: center;"><a class="btn" href="/auth/login">Login</a> 
-        <a class="btn" href="/auth/register">Register</a>
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
+        <div>
+            <h1 class="text-center text-4xl font-extrabold text-gray-900 tracking-tight">Ledger</h1>
+            <p class="mt-2 text-center text-sm text-gray-600">Double-entry Accounting Tool</p>
+        </div>
+        
+        <div class="flex flex-col space-y-4 mt-8">
+            <a href="/auth/login" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors">
+                Login
+            </a>
+            <a href="/auth/register" class="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors">
+                Register
+            </a>
+        </div>
     </div>
 </div>
-
-
 {% endblock %}

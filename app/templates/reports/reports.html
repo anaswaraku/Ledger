@@ -3,33 +3,50 @@
 {% block title %}Reports — Ledger{% endblock %}
 
 {% block content %}
-<h2>Reports</h2>
-
-<div>
-    <label for="journal-select">Journal: </label>
-    <select id="journal-select" onchange="onJournalChange(this.value)">
-        <option value="">-- select journal --</option>
-    </select>
+<div class="mb-8 flex items-center justify-between">
+    <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Reports</h2>
 </div>
 
-<hr>
+<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
+    <div class="account_container">
+        <label for="journal-select" class="block text-sm font-medium text-gray-700 mb-1">Journal</label>
+        <select id="journal-select" onchange="onJournalChange(this.value)"
+            class="w-full sm:w-96 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors bg-white">
+            <option value="">-- select journal --</option>
+        </select>
+    </div>
+</div>
 
-<section id="reports-section" style="display:none">
-    <nav>
-        <button onclick="loadReport('balance-sheet')">Balance Sheet</button>
-        <button onclick="loadReport('income-statement')">Income Statement</button>
-        <button onclick="loadReport('cash-flow')">Cash Flow</button>
+<section id="reports-section" style="display:none" class="space-y-6">
+    <nav class="flex flex-wrap gap-3">
+        <button onclick="loadReport('balance-sheet')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Balance Sheet</button>
+        <button onclick="loadReport('income-statement')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Income Statement</button>
+        <button onclick="loadReport('cash-flow')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Cash Flow</button>
     </nav>
 
     <!-- Date range for period reports -->
-    <div id="date-range" style="display:none;margin-top:0.5rem">
-        <label>From: <input type="date" id="report-from"></label>
-        <label>To: <input type="date" id="report-to"></label>
-        <button onclick="loadReport(currentReport)">Run</button>
+    <div id="date-range" style="display:none" class="bg-gray-50 p-4 rounded-md border border-gray-200">
+        <div class="flex flex-wrap gap-4 items-end">
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">From</label>
+                <input type="date" id="report-from" class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">To</label>
+                <input type="date" id="report-to" class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none">
+            </div>
+            <button onclick="loadReport(currentReport)" class="px-4 py-2 bg-brand text-white text-sm font-medium rounded-md hover:bg-gray-800 transition-colors">Run Report</button>
+        </div>
     </div>
 
-    <hr>
-    <div id="report-output"><p>Select a report above.</p></div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
+            <h3 class="text-lg font-medium text-gray-900 leading-6">Report Output</h3>
+        </div>
+        <div id="report-output" class="p-6">
+            <p class="text-gray-500 text-sm text-center">Select a report above.</p>
+        </div>
+    </div>
 </section>
 {% endblock %}
 
@@ -66,14 +83,14 @@
     function onJournalChange(jid) {
         selectedJournalId = jid;
         document.getElementById("reports-section").style.display = jid ? "block" : "none";
-        document.getElementById("report-output").innerHTML = "<p>Select a report above.</p>";
+        document.getElementById("report-output").innerHTML = "<p class='text-gray-500 text-sm text-center'>Select a report above.</p>";
         currentReport = null;
     }
 
     function loadReport(name) {
         currentReport = name;
         const output = document.getElementById("report-output");
-        output.innerHTML = "<p>Loading...</p>";
+        output.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
 
         const isPeriod = name === "income-statement" || name=="cash-flow";
         document.getElementById("date-range").style.display = isPeriod ? "block" : "none";
@@ -84,7 +101,7 @@
             const from = document.getElementById("report-from").value;
             const to = document.getElementById("report-to").value;
             if (!from || !to) {
-                output.innerHTML = "<p>Please select a date range.</p>";
+                output.innerHTML = "<p class='text-red-600 text-sm'>Please select a date range.</p>";
                 return;
             }
             url += `&date_from=${from}&date_to=${to}`;
@@ -94,24 +111,32 @@
             if (name === "balance-sheet") renderBalanceSheet(data);
             else if (name === "income-statement") renderIncomeStatement(data);
             else if (name =="cash-flow") renderCashFlow(data);
-            else output.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            else output.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
         }).catch(() => {
-            output.innerHTML = "<p>Error loading report.</p>";
+            output.innerHTML = "<p class='text-red-600 text-sm'>Error loading report.</p>";
         });
     }
 
     function renderBalanceSheet(data) {
         const el = document.getElementById("report-output");
         if (!data || !data.assets) {
-            el.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
         el.innerHTML = `
-            <h3>Balance Sheet — as of ${data.date}</h3>
-            ${renderDictSection("Assets", data.assets)}
-            ${renderDictSection("Liabilities", data.liabilities)}
-            ${renderDictSection("Equity", data.equity)}
-            <p><strong>Net Assets: ${parseFloat(data.net).toFixed(2)}</strong></p>
+            <div class="mb-6 pb-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">Balance Sheet</h3>
+                <p class="text-sm text-gray-500">As of ${data.date}</p>
+            </div>
+            <div class="space-y-8">
+                ${renderDictSection("Assets", data.assets)}
+                ${renderDictSection("Liabilities", data.liabilities)}
+                ${renderDictSection("Equity", data.equity)}
+            </div>
+            <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
+                <strong class="text-lg text-gray-900">Net Assets</strong>
+                <strong class="text-lg text-gray-900 font-mono">${parseFloat(data.net).toFixed(2)}</strong>
+            </div>
         `;
     }
 
@@ -120,66 +145,84 @@
         let total = 0;
         for (const [name, balance] of Object.entries(dictData)) {
             const val = parseFloat(balance);
-            rows += `<tr><td>${name}</td><td>${val.toFixed(2)}</td></tr>`;
+            rows += `<tr class="hover:bg-gray-50"><td class="py-2 pl-4 text-sm text-gray-700">${name}</td><td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">${val.toFixed(2)}</td></tr>`;
             total += val;
         }
-        if (!rows) rows = "<tr><td colspan='2'>None</td></tr>";
+        if (!rows) rows = "<tr><td colspan='2' class='py-2 px-4 text-sm text-gray-500 italic'>None</td></tr>";
         
-        return `<h4>${title}</h4>
-            <table border='1'>
-                <thead><tr><th>Account</th><th>Balance</th></tr></thead>
-                <tbody>${rows}</tbody>
-            </table>
-            <p>Total: <strong>${total.toFixed(2)}</strong></p>`;
+        return `
+            <div>
+                <h4 class="text-md font-semibold text-gray-800 mb-2">${title}</h4>
+                <div class="bg-white border border-gray-200 rounded-md overflow-hidden">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <tbody class="divide-y divide-gray-200">
+                            ${rows}
+                        </tbody>
+                        <tfoot class="bg-gray-50 border-t border-gray-200">
+                            <tr>
+                                <td class="py-3 pl-4 text-sm font-medium text-gray-900">Total ${title}</td>
+                                <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">${total.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>`;
     }
 
     function renderIncomeStatement(data) {
         const el = document.getElementById("report-output");
         if (!data || !data.income) {
-            el.innerHTML = "<pre>" + JSON.stringify(data, null, 2) + "</pre>";
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
         el.innerHTML = `
-            <h3>Income Statement — ${data.date_from} to ${data.date_to}</h3>
-            ${renderDictSection("Income", data.income)}
-            <p>Total Income: <strong>${parseFloat(data.total_income).toFixed(2)}</strong></p>
-            ${renderDictSection("Expenses", data.expenses)}
-            <p>Total Expenses: <strong>${parseFloat(data.total_expenses).toFixed(2)}</strong></p>
-            <p>Net Income: <strong>${parseFloat(data.net_income).toFixed(2)}</strong></p>
+            <div class="mb-6 pb-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">Income Statement</h3>
+                <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
+            </div>
+            <div class="space-y-8">
+                ${renderDictSection("Income", data.income)}
+                ${renderDictSection("Expenses", data.expenses)}
+            </div>
+            <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
+                <strong class="text-lg text-gray-900">Net Income</strong>
+                <strong class="text-lg text-gray-900 font-mono ${parseFloat(data.net_income) < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(data.net_income).toFixed(2)}</strong>
+            </div>
         `;
-    }
-
-    function renderSection(section) {
-        return `<h4>${section.label}</h4>
-            ${renderLineItems(section.lines)}
-            <p>Total: <strong>${section.total}</strong></p>`;
-    }
-
-    function renderLineItems(lines) {
-        if (!lines || lines.length === 0) return "<p>None</p>";
-        return "<table border='1'><thead><tr><th>Account</th><th>Type</th><th>Balance</th></tr></thead><tbody>" +
-            lines.map(l => `<tr><td>${l.account_name}</td><td>${l.account_type}</td><td>${l.balance}</td></tr>`).join("") +
-            "</tbody></table>";
     }
 
     function renderCashFlow(data){
         const el = document.getElementById("report-output");
         if (!data || data.beginning_balance ===undefined){
-            el.innerHTML="<pre>"+JSON.stringify(data, null, 2)+"</pre>";
+            el.innerHTML="<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>"+JSON.stringify(data, null, 2)+"</pre>";
             return;
         }
         el.innerHTML=`
-        <h3> Cash Flow Statement - ${date.date_from} to ${data.date_to}</h3
-        <p><strong>Beginning Cash Balance</strong> $${parseFloat(data.beginning_balance).toFixed(2)}</p>
-        <br>
+        <div class="mb-6 pb-4 border-b border-gray-200">
+            <h3 class="text-xl font-bold text-gray-900">Cash Flow Statement</h3>
+            <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
+        </div>
         
-        ${renderDictSection("Cash Inflows", data.inflows)}
-        <br>
-        ${renderDictSection("Cash Outflows", data.outflows)}
-        <br>
-        <p><strong>Net Cash Flow: </strong> $${parseFloat(data.net_cash_flow).toFixed(2)}</p>
-        <hr>
-        <p><strong>Ending Cash Balance: ${parseFloat(data.ending_balance).toFixed(2)}</strong></p>`;
+        <div class="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
+            <strong class="text-sm text-gray-700">Beginning Cash Balance</strong>
+            <strong class="text-sm font-mono text-gray-900">$${parseFloat(data.beginning_balance).toFixed(2)}</strong>
+        </div>
+        
+        <div class="space-y-8 mb-6">
+            ${renderDictSection("Cash Inflows", data.inflows)}
+            ${renderDictSection("Cash Outflows", data.outflows)}
+        </div>
+        
+        <div class="flex justify-between items-center mb-6 px-4 py-3 border-b border-gray-200">
+            <strong class="text-sm text-gray-700">Net Cash Flow</strong>
+            <strong class="text-sm font-mono ${parseFloat(data.net_cash_flow) < 0 ? 'text-red-600' : 'text-green-600'}">$${parseFloat(data.net_cash_flow).toFixed(2)}</strong>
+        </div>
+        
+        <div class="flex justify-between items-center pt-2">
+            <strong class="text-lg text-gray-900">Ending Cash Balance</strong>
+            <strong class="text-lg font-mono text-gray-900">$${parseFloat(data.ending_balance).toFixed(2)}</strong>
+        </div>
+        `;
     }
 </script>
 {% endblock %}

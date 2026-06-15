@@ -3,69 +3,56 @@
 {% block title %}Dashboard — Ledger{% endblock %}
 
 {% block content %}
-<h2 style="text-align: center;">Dashboard</h2>
-<style>
-    section {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-    }
-
-    .dashboard-container {
-        display: grid;
-        grid-template-columns: 50% 50%;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.864);
-        padding: 10px;
-        gap: 5px;
-        margin: 30px;
-        padding: 30px;
-        height: 50vh;     
-        border-radius: 12px;
-    }
-
-    .dashboard-container div {
-        background-color: #9d0404;
-        padding: 10px;
-        font-size: 30px;
-        text-align: center;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 12px;        
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.597);
-    }
-    .dashboard-container div a{
-        text-decoration: none;
-        color: black;
-    }
-    .dashboard-container div:hover{     
-    transform: scale(0.9);
-    transition: transform 0.2s ease;
-
-    }
-</style>
-
-<div class="dashboard-container">
-    <div style="background-color: #d4e09b;" href> 
-        <a href="/journals">Journals</a></div>
-    <div style="background-color: #f6f4d2;"><a href="/accounts">Accounts</a></div>
-    <div style="background-color: #cbdfbd;"><a href="/transactions">Transactions</a></div>
-    <div style="background-color: #f19c79;"><a href="/reports">Reports</a></div>
+<div class="mb-8 flex items-center justify-between">
+    <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Dashboard</h2>
 </div>
 
+<!-- Dashboard Grid Links -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+    <a href="/journals" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
+    </a>
+    
+    <a href="/accounts" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Accounts</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">View balances, assets, liabilities, and equity.</p>
+    </a>
+    
+    <a href="/transactions" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Transactions</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Record income, expenses, and transfers.</p>
+    </a>
+    
+    <a href="/reports" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Reports</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Generate balance sheets and income statements.</p>
+    </a>
+</div>
 
-<section>
-    <h3>Your Journals</h3>
-    <div id="journal-summary" hx-get="/api/v1/journals/" hx-trigger="load" hx-target="#journal-summary">
-        Loading...
+<!-- Recent/Your Journals -->
+<section class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
+        <h3 class="text-lg font-medium text-gray-900 leading-6">Your Journals</h3>
+    </div>
+    <div id="journal-summary" hx-get="/api/v1/journals/" hx-trigger="load" hx-target="#journal-summary" class="p-0">
+        <div class="flex items-center justify-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+        </div>
     </div>
 </section>
-
-<br>
-<a href="/journals">Manage Journals →</a> |
-<a href="/transactions">View Transactions →</a> |
-<a href="/reports">Reports →</a>
 {% endblock %}
 
 {% block scripts %}
@@ -77,11 +64,19 @@
             const journals = JSON.parse(e.detail.xhr.response);
             const el = document.getElementById("journal-summary");
             if (journals.length === 0) {
-                el.innerHTML = "<p>No journals yet. <a href='/journals'>Create one</a>.</p>";
+                el.innerHTML = "<div class='p-6 text-center text-sm text-gray-500'>No journals yet. <a href='/journals' class='text-brand hover:underline'>Create one</a>.</div>";
             } else {
-                el.innerHTML = "<ul>" + journals.map(j =>
-                    `<li><a href="/journals/${j.id}">${j.name}</a>${j.description ? " — " + j.description : ""}</li>`
-                ).join("") + "</ul>";
+                let html = '<ul class="divide-y divide-gray-200">';
+                html += journals.map(j => `
+                    <li class="px-6 py-4 hover:bg-gray-50 transition-colors">
+                        <a href="/journals/${j.id}" class="block">
+                            <p class="text-sm font-medium text-brand truncate">${j.name}</p>
+                            <p class="text-sm text-gray-500 truncate">${j.description ? j.description : "No description"}</p>
+                        </a>
+                    </li>
+                `).join("");
+                html += '</ul>';
+                el.innerHTML = html;
             }
         }
     });

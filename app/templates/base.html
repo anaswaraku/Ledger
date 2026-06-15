@@ -2,216 +2,89 @@
 <html lang="en">
 
 <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{% block title %}Ledger{% endblock %}</title>
-        <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-        <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ledger{% endblock %}</title>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org/dist/ext/json-enc.js"></script>
+    <!-- Tailwind CSS (Minimal Configuration) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#111827', // text-gray-900
+                    }
+                }
+            }
+        }
+    </script>
 </head>
 
-<body>
-        <style>
-                body {
-                        background-color: #ffffff;
-                        color: #1a1a1a;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        margin: 0;
-                        line-height: 1.6;
-                        padding-bottom: 2rem;
-                }
+<body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
 
-                main {
-                        max-width: 800px;
-                        margin: 0 auto;
-                        padding: 2rem;
-                }
-
-                .container {
-                        background: #ffffff;
-                        padding: 2rem;
-                        border: 1px solid #eaeaea;
-                        border-radius: 6px;
-                        width: 100%;
-                        max-width: 400px;
-                        margin: 0 auto;
-                        box-sizing: border-box;
-                }
-
-                .navbar {
-                        display: flex;
-                        align-items: center;
-                        flex-wrap: wrap;
-                        gap: 1.5rem;
-                        padding: 1rem 2rem;
-                        background: #ffffff;
-                        border-bottom: 1px solid #eaeaea;
-                }
-
-                .logo {
-                        margin-right: auto;
-                        font-size: 1.1rem;
-                        font-weight: 600;
-                        color: #000000;
-                        letter-spacing: -0.02em;
-                }
-
-                .navbar a {
-                        text-decoration: none;
-                        color: #666666;
-                        font-size: 0.9rem;
-                        transition: color 0.2s ease;
-                }
-
-                .navbar a:hover {
-                        color: #000000;
-                }
-
-                /* Button */
-                button {
-                        padding: 0.5rem 1rem;
-                        background-color: #ffffff;
-                        color: #1a1a1a;
-                        border: 1px solid #d1d1d1;
-                        border-radius: 4px;
-                        font-size: 0.9rem;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                }
-
-                button:hover {
-                        background-color: #f9f9f9;
-                        border-color: #a3a3a3;
-                }
-
-                button:active {
-                        background-color: #f0f0f0;
-                }
-
-                label {
-                        font-size: 0.85rem;
-                        color: #4a4a4a;
-                        display: inline-block;
-                        margin-bottom: 0.3rem;
-                }
-
-                /* Shared Style for Inputs & Select */
-                input, select {
-                        width: 100%;
-                        padding: 0.6rem 0.8rem;
-                        font-size: 0.9rem;
-                        border-radius: 4px;
-                        border: 1px solid #e2e2e2;
-                        background: #ffffff;
-                        color: #1a1a1a;
-                        box-sizing: border-box;
-                        transition: border-color 0.2s ease;
-                        margin-bottom: 1rem;
-                }
-
-                input:focus, select:focus {
-                        outline: none;
-                        border-color: #a3a3a3;
-                }
-
-                /* Select container */
-                .select-container {
-                        position: relative;
-                }
-
-                select {
-                        appearance: none;
-                        padding-right: 2rem;
-                        cursor: pointer;
-                }
-
-                .select-container::after {
-                        content: "▼";
-                        position: absolute;
-                        right: 0.8rem;
-                        top: 38%;
-                        transform: translateY(-50%);
-                        font-size: 0.6rem;
-                        color: #888888;
-                        pointer-events: none;
-                }
-
-                hr {
-                        border: 0;
-                        border-top: 1px solid #eaeaea;
-                        margin: 1.5rem 0;
-                }
-
-                /* Mobile */
-                @media (max-width: 768px) {
-                        .navbar {
-                                flex-direction: column;
-                                align-items: flex-start;
-                                gap: 0.75rem;
-                                padding: 1rem;
-                        }
-
-                        .logo {
-                                margin-bottom: 0.5rem;
-                        }
-
-                        .navbar a {
-                                width: 100%;
-                                padding: 0.25rem 0;
-                        }
-                }
-        </style>
-
-
-
-        {% if auth_page==false %}
-        <nav class="navbar">
-
-                <strong class="logo">Ledger</strong>
-                <a href="/journals">Journals</a>
-                <a href="/accounts">Accounts</a>
-                <a href="/transactions">Transactions</a>
-                <a href="/reports">Reports</a>
-                <a href="#" onclick="logout()">Logout</a>
-
-
+    {% if auth_page == false %}
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-full shadow-sm">
+        <div class="h-16 flex items-center px-6 border-b border-gray-200">
+            <strong class="text-xl font-bold tracking-tight text-gray-900">Ledger</strong>
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+            <a href="/journals" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Journals</a>
+            <a href="/accounts" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Accounts</a>
+            <a href="/transactions" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Transactions</a>
+            <a href="/reports" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Reports</a>
         </nav>
-        {% elif dashboard == true %}
-        <nav class="navbar">
-                <strong class="logo">Ledger</strong>
-                <a href="#" onclick="logout()">Logout</a>
-        </nav>
-        <hr>
-        {% endif %}
+        <div class="p-4 border-t border-gray-200">
+            <a href="#" onclick="logout()" class="block px-4 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">Logout</a>
+        </div>
+    </aside>
+    {% elif dashboard == true %}
+    <!-- Simple Header for Dashboard/Onboarding if needed -->
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-full shadow-sm">
+        <div class="h-16 flex items-center px-6 border-b border-gray-200">
+            <strong class="text-xl font-bold tracking-tight text-gray-900">Ledger</strong>
+        </div>
+        <div class="mt-auto p-4 border-t border-gray-200">
+            <a href="#" onclick="logout()" class="block px-4 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">Logout</a>
+        </div>
+    </aside>
+    {% endif %}
 
-        <main>
-                {% block content %}{% endblock %}
-        </main>
+    <!-- Main Content Area -->
+    <main class="flex-1 h-full overflow-y-auto">
+        <div class="max-w-5xl mx-auto p-8">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
 
-        <script>
-                // Inject JWT into every HTMX request
-                document.body.addEventListener("htmx:configRequest", function (e) {
-                        const token = localStorage.getItem("access_token");
-                        if (token) {
-                                e.detail.headers["Authorization"] = "Bearer " + token;
-                        }
-                });
+    <script>
+        // Inject JWT into every HTMX request
+        document.body.addEventListener("htmx:configRequest", function (e) {
+            const token = localStorage.getItem("access_token");
+            if (token) {
+                e.detail.headers["Authorization"] = "Bearer " + token;
+            }
+        });
 
-                function logout() {
-                        localStorage.removeItem("access_token");
-                        window.location.href = "/";
-                }
+        function logout() {
+            localStorage.removeItem("access_token");
+            window.location.href = "/";
+        }
 
-                // Global HTMX error handler
-                document.body.addEventListener("htmx:responseError", function (e) {
-                        const status = e.detail.xhr.status;
-                        if (status === 401) {
-                                localStorage.removeItem("access_token");
-                                window.location.href = "/auth/login";
-                        }
-                });
-        </script>
+        // Global HTMX error handler
+        document.body.addEventListener("htmx:responseError", function (e) {
+            const status = e.detail.xhr.status;
+            if (status === 401) {
+                localStorage.removeItem("access_token");
+                window.location.href = "/auth/login";
+            }
+        });
+    </script>
 
-        {% block scripts %}{% endblock %}
+    {% block scripts %}{% endblock %}
 </body>
 
-</html>>
+</html>
