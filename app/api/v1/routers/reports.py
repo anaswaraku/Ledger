@@ -110,4 +110,4 @@ async def get_net_worth(
     current_user: User = Depends(get_current_user),
 )->NetWorthResponse:
     """For networth for display"""
-    return await _make_report_service(db).get_net_worth(current_user)
+    return await _make_report_service(db).get_net_worth(current_user.id)

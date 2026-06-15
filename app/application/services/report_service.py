@@ -271,4 +271,6 @@ class ReportService:
             self,
             owner_id:UUID
     ):
-        return await self.get_net_worth(owner_id)
+        result = await self.report_repo.get_net_worth(owner_id)
+        from app.api.v1.schemas.report import NetWorthResponse
+        return NetWorthResponse(**result)

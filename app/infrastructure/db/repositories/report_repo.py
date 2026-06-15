@@ -6,7 +6,8 @@ from uuid import UUID
 from sqlalchemy import func, select, case,label
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.models.account import Account, AccountType, Journal
+from app.domain.models.account import Account, AccountType
+from app.domain.models.journal import Journal
 from app.domain.models.transaction import Transaction
 from app.domain.models.transaction_entry import TransactionEntry
 
@@ -151,11 +152,17 @@ class ReportRepository:
         )
 
         result = await self.db.execute(query)
-        assets = result.assets
-        liabilities = result.liabilities
+        row = result.first()
+        assets = row.assets if row else Decimal("0.0")
+        liabilities = row.liabilities if row else Decimal("0.0")
+        
+        # In a ledger, liabilities are usually negative (credits). 
+        # Net worth is Assets + Liabilities (e.g., 1000 + (-400) = 600)
+        net_worth = assets + liabilities
 
+        # Convert liabilities to positive for display
         return {
-            "assets":assets,
-            "liabilities":liabilities,
-            "net_worth":float(assets-liabilities)
+            "assets": assets,
+            "liabilities": abs(liabilities),
+            "net_worth": net_worth
         }

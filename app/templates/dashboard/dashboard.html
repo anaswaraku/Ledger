@@ -9,41 +9,46 @@
 
 <!-- Dashboard Grid Links -->
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-    <a href="#" onclick="showNetWorth()" id="networth" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+    <a href="#" onclick="showNetWorth(event)" id="networth"
+        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Networth</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500" id="networth-display">Click to view</p>
+    </a>
+
+
+
+    <a href="/journals"
+        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
         <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
     </a>
-    
-    
-    
-    <a href="/journals" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
-        <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
-            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
-    </a>
-    
-    <a href="/accounts" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+
+    <a href="/accounts"
+        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Accounts</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
         <p class="mt-2 text-sm text-gray-500">View balances, assets, liabilities, and equity.</p>
     </a>
-    
-    <a href="/transactions" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+
+    <a href="/transactions"
+        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Transactions</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
         <p class="mt-2 text-sm text-gray-500">Record income, expenses, and transfers.</p>
     </a>
-    
-    <a href="/reports" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+
+    <a href="/reports"
+        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Reports</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
@@ -68,9 +73,44 @@
 {% block scripts %}
 <script>
 
-    document.getElementById("networth").addEventListener("click", function(e){
-    
-    })
+    async function showNetWorth(event) {
+        if (event) event.preventDefault(); // Prevents jumping to the top of the page
+        
+        const displayEl = document.getElementById("networth-display");
+        if (!displayEl) return;
+        
+        displayEl.innerHTML = '<span class="animate-pulse">Loading...</span>';
+        
+        try {
+            const token = localStorage.getItem("access_token");
+            const response = await fetch('/api/v1/reports/net-worth', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+            
+            if (response.status === 401) {
+                window.location.href = "/auth/login";
+                return;
+            }
+            if (!response.ok) throw new Error("Failed to load net worth");
+            
+            const data = await response.json();
+            
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            
+            displayEl.innerHTML = `
+                <span class="text-brand font-semibold text-xl">${formatter.format(data.net_worth)}</span><br>
+                <span class="text-xs text-gray-400">Assets: ${formatter.format(data.assets)} | Liabilities: ${formatter.format(data.liabilities)}</span>
+            `;
+            
+            // Remove the onclick event so it doesn't refetch unnecessarily if clicked again
+            document.getElementById("networth").onclick = null;
+        } catch (error) {
+            console.error(error);
+            displayEl.innerHTML = '<span class="text-red-500">Error loading data</span>';
+        }
+    }
     // Replace the raw JSON list with a readable summary
     document.body.addEventListener("htmx:afterRequest", function (e) {
         if (!e.detail.elt || e.detail.elt.id !== "journal-summary") return;
