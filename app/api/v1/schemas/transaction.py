@@ -64,14 +64,18 @@ class TransactionCreate(TransactionBase):
         cls, entries: list[TransactionEntryCreate],
     ) -> list[TransactionEntryCreate]:
         """
-        Delegate to the domain rule — single source of truth.
-        Converts DoubleEntryError → ValueError so Pydantic renders it as a
-        422 validation error with a clear message.
+        Delegate to the domain rule if single currency.
+        For multi-currency, ensure at least 2 entries are present.
         """
-        try:
-            validate_double_entry([e.amount for e in entries])
-        except DoubleEntryError as exc:
-            raise ValueError(str(exc))
+        currencies = {e.currency for e in entries if e.currency}
+        if len(currencies) <= 1:
+            try:
+                validate_double_entry([e.amount for e in entries])
+            except DoubleEntryError as exc:
+                raise ValueError(str(exc))
+        else:
+            if len(entries) < 2:
+                raise ValueError("A transaction must have at least 2 entries.")
         return entries
 
 

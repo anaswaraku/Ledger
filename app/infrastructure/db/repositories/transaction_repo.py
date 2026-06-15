@@ -37,6 +37,7 @@ class TransactionRepository:
         date_from: date_type | None = None,
         date_to: date_type | None = None,
         payee: str | None = None,
+        description: str | None = None,
     ) -> list[Transaction]:
         query = (
             select(Transaction)
@@ -52,6 +53,8 @@ class TransactionRepository:
             query = query.where(Transaction.date <= date_to)
         if payee:
             query = query.where(Transaction.payee.ilike(f"%{payee}%"))
+        if description:
+            query = query.where(Transaction.description.ilike(f"%{description}%"))
 
         result = await self.db.execute(query)
         return list(result.scalars().all())

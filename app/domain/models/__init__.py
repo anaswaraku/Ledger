@@ -10,6 +10,7 @@ from app.domain.models.account import Account
 from app.domain.models.transaction import Transaction
 from app.domain.models.transaction_entry import TransactionEntry
 from app.domain.models.market_price import MarketPrice
+from app.domain.models.budget import Budget
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "Transaction",
     "TransactionEntry",
     "MarketPrice",
+    "Budget",
 ]

@@ -43,6 +43,7 @@ async def list_transactions(
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     payee: str | None = Query(default=None),
+    description: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[TransactionResponse]:
@@ -54,6 +55,7 @@ async def list_transactions(
         date_from=date_from,
         date_to=date_to,
         payee=payee,
+        description=description,
     )
 
 

@@ -43,13 +43,15 @@ class TransactionService:
 
         # 2. Defence-in-depth: re-validate double-entry at the service layer
         #    (Pydantic schema already validates, but this guards non-schema paths)
-        try:
-            validate_double_entry([e.amount for e in data.entries])
-        except DoubleEntryError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=str(exc),
-            )
+        currencies = {e.currency for e in data.entries if e.currency}
+        if len(currencies) <= 1:
+            try:
+                validate_double_entry([e.amount for e in data.entries])
+            except DoubleEntryError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=str(exc),
+                )
 
         # 3. Verify all account IDs belong to this journal
         for entry in data.entries:
@@ -95,6 +97,7 @@ class TransactionService:
         date_from: date_type | None = None,
         date_to: date_type | None = None,
         payee: str | None = None,
+        description: str | None = None,
     ) -> list[Transaction]:
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
@@ -102,6 +105,7 @@ class TransactionService:
         return await self.txn_repo.list_by_journal(
             journal_id, skip=skip, limit=limit,
             date_from=date_from, date_to=date_to, payee=payee,
+            description=description,
         )
 
     async def get_or_404(

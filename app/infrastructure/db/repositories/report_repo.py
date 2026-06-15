@@ -87,3 +87,37 @@ class ReportRepository:
         )
         result = await self.db.execute(query)
         return [(row.name, row.movement or Decimal("0.0")) for row in result.all()]
+
+    async def get_investment_transactions_entries(
+        self, journal_id: UUID, account_id: UUID | None = None, date_to: date | None = None
+    ) -> list[dict]:
+        """Fetch all entries of transactions that touch non-USD investment accounts."""
+        stmt_txns = (
+            select(Transaction.id)
+            .join(TransactionEntry, Transaction.id == TransactionEntry.transaction_id)
+            .join(Account, TransactionEntry.account_id == Account.id)
+            .where(Account.journal_id == journal_id)
+            .where(TransactionEntry.commodity != "USD")
+        )
+        if account_id:
+            stmt_txns = stmt_txns.where(Account.id == account_id)
+        if date_to:
+            stmt_txns = stmt_txns.where(Transaction.date <= date_to)
+
+        query = (
+            select(
+                Transaction.id.label("txn_id"),
+                Transaction.date.label("txn_date"),
+                TransactionEntry.account_id.label("account_id"),
+                Account.name.label("account_name"),
+                TransactionEntry.amount.label("amount"),
+                TransactionEntry.commodity.label("commodity"),
+            )
+            .select_from(Transaction)
+            .join(TransactionEntry, Transaction.id == TransactionEntry.transaction_id)
+            .join(Account, TransactionEntry.account_id == Account.id)
+            .where(Transaction.id.in_(stmt_txns))
+            .order_by(Transaction.date.asc(), Transaction.created_at.asc())
+        )
+        res = await self.db.execute(query)
+        return [dict(row._mapping) for row in res.all()]
