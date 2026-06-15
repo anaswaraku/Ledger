@@ -79,3 +79,8 @@ class CashFlowStatementResponse(BaseModel):
     outflows: dict[str, Decimal]
     net_cash_flow: Decimal
     ending_balance: Decimal
+
+class NetWorthResponse(BaseModel):
+    assets:Decimal
+    liabilities:Decimal
+    net_worth:Decimal

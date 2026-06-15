@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.report import BalanceSheetResponse, IncomeStatementResponse, CashFlowStatementResponse
+from app.api.v1.schemas.report import BalanceSheetResponse, IncomeStatementResponse, CashFlowStatementResponse, NetWorthResponse
 from app.application.services.report_service import ReportService
 from app.dependencies import get_current_user
 from app.domain.models.user import User
@@ -103,3 +103,11 @@ async def get_roi_report(
         account_id=account_id,
         as_of=date,
     )  # type: ignore[return-value]
+
+@router.get("/net-worth", response_model=NetWorthResponse)
+async def get_net_worth(
+    db:AsyncSession=Depends(get_db),
+    current_user: User = Depends(get_current_user),
+)->NetWorthResponse:
+    """For networth for display"""
+    return await _make_report_service(db).get_net_worth(current_user)

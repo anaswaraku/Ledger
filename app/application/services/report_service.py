@@ -266,3 +266,9 @@ class ReportService:
             )
 
         return results
+    
+    async def get_net_worth(
+            self,
+            owner_id:UUID
+    ):
+        return await self.get_net_worth(owner_id)

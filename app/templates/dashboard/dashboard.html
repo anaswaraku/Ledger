@@ -9,6 +9,16 @@
 
 <!-- Dashboard Grid Links -->
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+    <a href="#" onclick="showNetWorth()" id="networth" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
+            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
+    </a>
+    
+    
+    
     <a href="/journals" class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
@@ -57,6 +67,10 @@
 
 {% block scripts %}
 <script>
+
+    document.getElementById("networth").addEventListener("click", function(e){
+    
+    })
     // Replace the raw JSON list with a readable summary
     document.body.addEventListener("htmx:afterRequest", function (e) {
         if (!e.detail.elt || e.detail.elt.id !== "journal-summary") return;

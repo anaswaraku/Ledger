@@ -3,10 +3,10 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, case,label
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.models.account import Account, AccountType
+from app.domain.models.account import Account, AccountType, Journal
 from app.domain.models.transaction import Transaction
 from app.domain.models.transaction_entry import TransactionEntry
 
@@ -121,3 +121,41 @@ class ReportRepository:
         )
         res = await self.db.execute(query)
         return [dict(row._mapping) for row in res.all()]
+    
+    #net worth for dashboard
+    async def get_net_worth(self,user_id: UUID):
+        """Return total networth for display"""
+        query = (
+            select(
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Account.account_type==AccountType.ASSET,
+                             TransactionEntry.amount),else_=0,
+                        )
+                    ),0,
+                ).label("assets"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (Account.account_type==AccountType.LIABILITY,
+                             TransactionEntry.amount),
+                             else_=0
+                        )
+                    ),0,
+                ).label("liabilities")
+            ).select_from(TransactionEntry)
+            .join(Account, Account.id == TransactionEntry.account_id)
+            .join(Journal, Journal.id ==Account.journal_id)
+            .where(Journal.owner_id==user_id)
+        )
+
+        result = await self.db.execute(query)
+        assets = result.assets
+        liabilities = result.liabilities
+
+        return {
+            "assets":assets,
+            "liabilities":liabilities,
+            "net_worth":float(assets-liabilities)
+        }
