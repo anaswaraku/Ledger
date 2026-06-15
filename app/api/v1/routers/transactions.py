@@ -12,23 +12,8 @@ from app.api.v1.schemas.transaction import (
 )
 from app.application.services.account_service import AccountService
 from app.application.services.transaction_service import TransactionService
-from app.application.use_cases.create_transaction import CreateTransactionUseCase
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_transaction_service
 from app.domain.models.user import User
-from app.infrastructure.db.database import get_db
-from app.infrastructure.db.repositories.account_repo import AccountRepository
-from app.infrastructure.db.repositories.journal_repo import JournalRepository
-from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
-
-router = APIRouter(prefix="/api/v1/transactions", tags=["Transactions"])
-
-
-def _make_service(db: AsyncSession) -> TransactionService:
-    return TransactionService(
-        txn_repo=TransactionRepository(db),
-        journal_repo=JournalRepository(db),
-        account_repo=AccountRepository(db),
-    )
 
 
 @router.get(
@@ -44,10 +29,10 @@ async def list_transactions(
     date_to: date | None = Query(default=None),
     payee: str | None = Query(default=None),
     description: str | None = Query(default=None),
-    db: AsyncSession = Depends(get_db),
+    service: TransactionService = Depends(get_transaction_service),
     current_user: User = Depends(get_current_user),
 ) -> list[TransactionResponse]:
-    return await _make_service(db).list(  # type: ignore[return-value]
+    return await service.list(  # type: ignore[return-value]
         owner_id=current_user.id,
         journal_id=journal_id,
         skip=skip,
@@ -67,12 +52,10 @@ async def list_transactions(
 )
 async def create_transaction(
     data: TransactionCreate,
-    db: AsyncSession = Depends(get_db),
+    service: TransactionService = Depends(get_transaction_service),
     current_user: User = Depends(get_current_user),
 ) -> TransactionResponse:
-    service = _make_service(db)
-    use_case = CreateTransactionUseCase(service)
-    txn = await use_case.execute(data=data, owner_id=current_user.id)
+    txn = await service.create(data=data, owner_id=current_user.id)
     return txn  # type: ignore[return-value]
 
 
@@ -84,10 +67,10 @@ async def create_transaction(
 async def get_transaction(
     txn_id: UUID,
     journal_id: UUID = Query(...),
-    db: AsyncSession = Depends(get_db),
+    service: TransactionService = Depends(get_transaction_service),
     current_user: User = Depends(get_current_user),
 ) -> TransactionResponse:
-    return await _make_service(db).get_or_404(  # type: ignore[return-value]
+    return await service.get_or_404(  # type: ignore[return-value]
         txn_id=txn_id,
         journal_id=journal_id,
         owner_id=current_user.id,
@@ -103,10 +86,10 @@ async def update_transaction(
     txn_id: UUID,
     journal_id: UUID = Query(...),
     data: TransactionUpdate = ...,
-    db: AsyncSession = Depends(get_db),
+    service: TransactionService = Depends(get_transaction_service),
     current_user: User = Depends(get_current_user),
 ) -> TransactionResponse:
-    return await _make_service(db).update(  # type: ignore[return-value]
+    return await service.update(  # type: ignore[return-value]
         txn_id=txn_id,
         journal_id=journal_id,
         owner_id=current_user.id,
@@ -122,10 +105,10 @@ async def update_transaction(
 async def delete_transaction(
     txn_id: UUID,
     journal_id: UUID = Query(...),
-    db: AsyncSession = Depends(get_db),
+    service: TransactionService = Depends(get_transaction_service),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    await _make_service(db).delete(
+    await service.delete(
         txn_id=txn_id,
         journal_id=journal_id,
         owner_id=current_user.id,

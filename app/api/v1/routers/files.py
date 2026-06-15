@@ -7,24 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.schemas.file import CSVImportResponse
 from app.api.v1.schemas.journal import JournalResponse
 from app.application.services.file_service import FileService
-from app.application.use_cases.import_csv import ImportCSVUseCase
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_file_service
 from app.domain.models.user import User
-from app.infrastructure.db.database import get_db
-from app.infrastructure.db.repositories.account_repo import AccountRepository
-from app.infrastructure.db.repositories.journal_repo import JournalRepository
-from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
 
 router = APIRouter(prefix="/api/v1/files", tags=["Files"])
-
-
-def _make_file_service(db: AsyncSession) -> FileService:
-    return FileService(
-        txn_repo=TransactionRepository(db),
-        journal_repo=JournalRepository(db),
-        account_repo=AccountRepository(db),
-    )
-
 
 @router.post(
     "/",
@@ -34,7 +20,7 @@ def _make_file_service(db: AsyncSession) -> FileService:
 )
 async def upload_file(
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
+    service: FileService = Depends(get_file_service),
     current_user: User = Depends(get_current_user),
 ) -> JournalResponse:
     """
@@ -55,7 +41,6 @@ async def upload_file(
             detail="Invalid text encoding in file.",
         )
 
-    service = _make_file_service(db)
     journal = await service.import_journal_json(owner_id=current_user.id, json_content=json_str)
     return journal  # type: ignore[return-value]
 
@@ -70,7 +55,7 @@ async def import_csv(
     debit_account_id: uuid.UUID = Form(...),
     credit_account_id: uuid.UUID = Form(...),
     file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
+    service: FileService = Depends(get_file_service),
     current_user: User = Depends(get_current_user),
 ) -> CSVImportResponse:
     """
@@ -85,9 +70,7 @@ async def import_csv(
             detail="Invalid text encoding in CSV file.",
         )
 
-    service = _make_file_service(db)
-    use_case = ImportCSVUseCase(service)
-    result = await use_case.execute(
+    result = await service.import_csv(
         owner_id=current_user.id,
         journal_id=journal_id,
         debit_account_id=debit_account_id,
@@ -104,13 +87,12 @@ async def import_csv(
 async def export_journal(
     journal_id: uuid.UUID = Query(...),
     format: str = Query("csv", description="Format to export (csv or json)"),
-    db: AsyncSession = Depends(get_db),
+    service: FileService = Depends(get_file_service),
     current_user: User = Depends(get_current_user),
 ) -> StreamingResponse:
     """
     Export all transactions in a journal as CSV or JSON stream.
     """
-    service = _make_file_service(db)
     fmt = format.lower()
 
     if fmt == "csv":

@@ -7,7 +7,6 @@ from fastapi import HTTPException, status
 
 from app.api.v1.schemas.transaction import TransactionCreate, TransactionUpdate
 from app.domain.models.transaction import Transaction
-from app.domain.rules.double_entry import DoubleEntryError, validate_double_entry
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
@@ -41,17 +40,7 @@ class TransactionService:
                 detail="Journal not found.",
             )
 
-        # 2. Defence-in-depth: re-validate double-entry at the service layer
-        #    (Pydantic schema already validates, but this guards non-schema paths)
-        currencies = {e.currency for e in data.entries if e.currency}
-        if len(currencies) <= 1:
-            try:
-                validate_double_entry([e.amount for e in data.entries])
-            except DoubleEntryError as exc:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=str(exc),
-                )
+
 
         # 3. Verify all account IDs belong to this journal
         for entry in data.entries:

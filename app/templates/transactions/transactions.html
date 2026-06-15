@@ -6,88 +6,87 @@
 <h2>Transactions</h2>
 <style>
     /* General section layout */
-#txn-section {
-    max-width: 900px;
-    margin: 20px auto;
-    font-family: Arial, sans-serif;
-}
+    #txn-section {
+        max-width: 900px;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+    }
 
-/* Headings */
-#txn-section h3 {
-    margin-bottom: 10px;
-}
+    /* Headings */
+    #txn-section h3 {
+        margin-bottom: 10px;
+    }
 
-/* Form spacing */
-#create-txn-form {
-    margin-bottom: 20px;
-}
+    /* Form spacing */
+    #create-txn-form {
+        margin-bottom: 20px;
+    }
 
-/* Labels */
-#create-txn-form label {
-    display: inline-block;
-    margin-bottom: 4px;
-    font-weight: 600;
-}
+    /* Labels */
+    #create-txn-form label {
+        display: inline-block;
+        margin-bottom: 4px;
+        font-weight: 600;
+    }
 
-/* Inputs */
-#create-txn-form input,
-#create-txn-form select {
-    padding: 6px 8px;
-    font-size: 14px;
-    margin-bottom: 10px;
-    width: 100%;
-    box-sizing: border-box;
-}
+    /* Inputs */
+    #create-txn-form input,
+    #create-txn-form select {
+        padding: 6px 8px;
+        font-size: 14px;
+        margin-bottom: 10px;
+        width: 100%;
+        box-sizing: border-box;
+    }
 
-/* Entry rows layout */
-.entry-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-/* Entry fields sizing */
-.entry-row select {
-    flex: 2;
-}
-
-.entry-row input[type="number"] {
-    flex: 1;
-}
-
-.entry-row input[type="text"] {
-    flex: 1;
-}
-
-/* Buttons */
-button {
-    padding: 6px 12px;
-    margin-right: 10px;
-    cursor: pointer;
-}
-
-/* Filter section */
-#txn-section > div > label {
-    margin-right: 15px;
-}
-
-/* Transaction list */
-#txn-list {
-    margin-top: 10px;
-}
-
-/* Responsive adjustments */
-@media (max-width: 600px) {
+    /* Entry rows layout */
     .entry-row {
-        flex-direction: column;
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
     }
 
-    #txn-section > div > label {
-        display: block;
-        margin-bottom: 8px;
+    /* Entry fields sizing */
+    .entry-row select {
+        flex: 2;
     }
-}
 
+    .entry-row input[type="number"] {
+        flex: 1;
+    }
+
+    .entry-row input[type="text"] {
+        flex: 1;
+    }
+
+    /* Buttons */
+    button {
+        padding: 6px 12px;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    /* Filter section */
+    #txn-section>div>label {
+        margin-right: 15px;
+    }
+
+    /* Transaction list */
+    #txn-list {
+        margin-top: 10px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+        .entry-row {
+            flex-direction: column;
+        }
+
+        #txn-section>div>label {
+            display: block;
+            margin-bottom: 8px;
+        }
+    }
 </style>
 <div class="select-container">
     <label for="journal-select">Journal: </label>
@@ -139,6 +138,7 @@ button {
     <h3>Transaction History</h3>
     <div>
         <label>Payee: <input type="text" id="filter-payee" size="15"></label>
+        <label>Description: <input type="text" id="filter-desc" size="15"></label>
         <label>From: <input type="date" id="filter-from"></label>
         <label>To: <input type="date" id="filter-to"></label>
         <button onclick="loadTransactions()">Filter</button>
@@ -260,10 +260,12 @@ button {
 
     function loadTransactions() {
         const payee = document.getElementById("filter-payee").value;
+        const desc = document.getElementById("filter-desc").value;
         const from = document.getElementById("filter-from").value;
         const to = document.getElementById("filter-to").value;
         let url = "/api/v1/transactions/?journal_id=" + selectedJournalId;
         if (payee) url += "&payee=" + encodeURIComponent(payee);
+        if (desc) url += "&description=" + encodeURIComponent(desc);
         if (from) url += "&date_from=" + from;
         if (to) url += "&date_to=" + to;
         fetchJson(url).then(renderTransactions);
@@ -271,6 +273,7 @@ button {
 
     function clearFilters() {
         document.getElementById("filter-payee").value = "";
+        document.getElementById("filter-desc").value = "";
         document.getElementById("filter-from").value = "";
         document.getElementById("filter-to").value = "";
         loadTransactions();

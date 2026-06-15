@@ -15,6 +15,11 @@ from app.core.security import decode_token
 from app.domain.models.user import User
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.user_repo import UserRepository
+from app.application.services.transaction_service import TransactionService
+from app.application.services.file_service import FileService
+from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
+from app.infrastructure.db.repositories.journal_repo import JournalRepository
+from app.infrastructure.db.repositories.account_repo import AccountRepository
 
 logger = logging.getLogger(__name__)
 
@@ -69,3 +74,17 @@ async def get_current_user(
         )
 
     return user
+
+async def get_transaction_service(db: AsyncSession = Depends(get_db)) -> TransactionService:
+    return TransactionService(
+        txn_repo=TransactionRepository(db),
+        journal_repo=JournalRepository(db),
+        account_repo=AccountRepository(db),
+    )
+
+async def get_file_service(db: AsyncSession = Depends(get_db)) -> FileService:
+    return FileService(
+        txn_repo=TransactionRepository(db),
+        journal_repo=JournalRepository(db),
+        account_repo=AccountRepository(db),
+    )
