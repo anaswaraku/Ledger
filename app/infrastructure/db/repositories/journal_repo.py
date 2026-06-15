@@ -49,3 +49,7 @@ class JournalRepository:
         await self.db.commit()
         await self.db.refresh(journal)
         return journal
+
+    async def delete(self, journal: Journal) -> None:
+        await self.db.delete(journal)
+        await self.db.commit()

@@ -60,3 +60,16 @@ async def get_journal(
     current_user: User = Depends(get_current_user),
 ) -> JournalResponse:
     return await _make_service(db).get_or_404(journal_id, current_user.id)  # type: ignore[return-value]
+
+
+@router.delete(
+    "/{journal_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a specific journal by ID",
+)
+async def delete_journal(
+    journal_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    await _make_service(db).delete(journal_id, current_user.id)

@@ -47,3 +47,8 @@ class JournalService:
                 detail="Journal not found.",
             )
         return journal
+
+    async def delete(self, journal_id: uuid.UUID, owner_id: uuid.UUID) -> None:
+        journal = await self.get_or_404(journal_id, owner_id)
+        await self.journal_repo.delete(journal)
+        logger.info("Journal '%s' deleted by user %s", journal.name, owner_id)
