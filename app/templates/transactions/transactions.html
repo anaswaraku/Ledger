@@ -7,16 +7,7 @@
     <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Transactions</h2>
 </div>
 
-<!-- Journal Selection -->
-<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-    <div class="account_container">
-        <label for="journal-select" class="block text-sm font-medium text-gray-700 mb-1">Journal</label>
-        <select id="journal-select" onchange="onJournalChange(this.value)"
-            class="w-full sm:w-96 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand transition-colors bg-white">
-            <option value="">-- select journal --</option>
-        </select>
-    </div>
-</div>
+
 
 <section id="txn-section" style="display:none" class="space-y-8">
 
@@ -136,33 +127,25 @@
         });
     }
 
-    // Populate journal selector
-    fetchJson("/api/v1/journals/").then(journals => {
-        const sel = document.getElementById("journal-select");
-        journals.forEach(j => {
-            const opt = document.createElement("option");
-            opt.value = j.id;
-            opt.textContent = j.name;
-            sel.appendChild(opt);
-        });
+    document.addEventListener("DOMContentLoaded", () => {
+        const jid = localStorage.getItem("selectedJournalId");
+        if (jid) {
+            selectedJournalId = jid;
+            document.getElementById("txn-section").style.display = "block";
+            
+            const listEl = document.getElementById("txn-list");
+            listEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
+            
+            fetchJson("/api/v1/accounts/?journal_id=" + jid).then(accounts => {
+                allAccounts = accounts;
+                populateAccountSelects();
+                loadTransactions();
+            });
+        } else {
+            const listEl = document.getElementById("txn-list");
+            listEl.innerHTML = '<div class="p-6 text-center text-sm text-gray-500">Please select a journal from the sidebar.</div>';
+        }
     });
-
-    function onJournalChange(jid) {
-        selectedJournalId = jid;
-        if (!jid) { document.getElementById("txn-section").style.display = "none"; return; }
-        document.getElementById("txn-section").style.display = "block";
-        
-        // Show loading state
-        const listEl = document.getElementById("txn-list");
-        listEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
-        
-        // Load accounts for this journal
-        fetchJson("/api/v1/accounts/?journal_id=" + jid).then(accounts => {
-            allAccounts = accounts;
-            populateAccountSelects();
-            loadTransactions();
-        });
-    }
 
     function populateAccountSelects() {
         document.querySelectorAll(".entry-account").forEach(sel => {

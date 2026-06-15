@@ -106,8 +106,9 @@ async def get_roi_report(
 
 @router.get("/net-worth", response_model=NetWorthResponse)
 async def get_net_worth(
+    journal_id: UUID = Query(...),
     db:AsyncSession=Depends(get_db),
     current_user: User = Depends(get_current_user),
 )->NetWorthResponse:
     """For networth for display"""
-    return await _make_report_service(db).get_net_worth(current_user.id)
+    return await _make_report_service(db).get_net_worth(current_user.id, journal_id)

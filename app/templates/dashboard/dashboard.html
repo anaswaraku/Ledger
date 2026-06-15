@@ -76,11 +76,17 @@
         const displayEl = document.getElementById("networth-display");
         if (!displayEl) return;
 
+        const journalId = localStorage.getItem("selectedJournalId");
+        if (!journalId) {
+            displayEl.innerHTML = '<span class="text-sm text-gray-500">Please select a journal from the sidebar.</span>';
+            return;
+        }
+
         displayEl.innerHTML = '<span class="animate-pulse">Loading...</span>';
 
         try {
             const token = localStorage.getItem("access_token");
-            const response = await fetch('/api/v1/reports/net-worth', {
+            const response = await fetch('/api/v1/reports/net-worth?journal_id=' + journalId, {
                 headers: {
                     'Authorization': 'Bearer ' + token
                 }

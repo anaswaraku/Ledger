@@ -81,8 +81,13 @@
 
         const dropdown= document.getElementById("my-journal");
         const apiEndpoint="/api/v1/journals/";
+        const token = localStorage.getItem("access_token");
 
-        fetch(apiEndpoint).then(
+        fetch(apiEndpoint, {
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        }).then(
             response=>{
                 if (!response.ok){
                     throw new Error("Network response not ok");
@@ -90,13 +95,33 @@
                 return response.json();
             }
         ).then((data)=>{
-            dropdown.innerHTML='<option value="">Select an option...</option>';
+            dropdown.innerHTML='<option value="">Select a journal...</option>';
+            let savedJournalId = localStorage.getItem('selectedJournalId');
+
+            if (!savedJournalId && data.length > 0) {
+                savedJournalId = data[0].id;
+                localStorage.setItem('selectedJournalId', savedJournalId);
+                window.location.reload();
+                return;
+            }
 
             data.forEach(item => {
                 const option=document.createElement("option");
                 option.value=item.id;
                 option.textContent=item.name;
+                if (item.id === savedJournalId) {
+                    option.selected = true;
+                }
                 dropdown.appendChild(option);
+            });
+
+            dropdown.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    localStorage.setItem('selectedJournalId', e.target.value);
+                } else {
+                    localStorage.removeItem('selectedJournalId');
+                }
+                window.location.reload();
             });
         }).catch(error=>{
             console.error("error fetching",error);

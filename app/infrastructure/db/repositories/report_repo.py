@@ -124,7 +124,7 @@ class ReportRepository:
         return [dict(row._mapping) for row in res.all()]
     
     #net worth for dashboard
-    async def get_net_worth(self,user_id: UUID):
+    async def get_net_worth(self,journal_id: UUID):
         """Return total networth for display"""
         query = (
             select(
@@ -148,7 +148,7 @@ class ReportRepository:
             ).select_from(TransactionEntry)
             .join(Account, Account.id == TransactionEntry.account_id)
             .join(Journal, Journal.id ==Account.journal_id)
-            .where(Journal.owner_id==user_id)
+            .where(Journal.id==journal_id)
         )
 
         result = await self.db.execute(query)
