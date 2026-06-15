@@ -15,6 +15,7 @@ from app.application.services.transaction_service import TransactionService
 from app.dependencies import get_current_user, get_transaction_service
 from app.domain.models.user import User
 
+router = APIRouter(prefix="/api/v1/transactions",tags=["Transactions"])
 
 @router.get(
     "/",
