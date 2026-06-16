@@ -131,7 +131,7 @@ class TransactionRepository:
         # result.all() returns a list of Row objects containing (Transaction, TransactionEntry)
         return list(result.all())
 
-    async def get_recent_transactions(
+    async def get_recent_transactions( 
         self, journal_id: uuid.UUID
     ) -> list[Transaction]:
         query = (

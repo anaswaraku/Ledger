@@ -35,7 +35,7 @@
         <select name="journal-list" id="my-journal" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">
             <option value="">Loading...</option>
         </select>
-            <a href="/journals" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Journals</a>
+         <p class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">Overview</p>
             <a href="/accounts" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Accounts</a>
             <a href="/transactions" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Transactions</a>
             <a href="/reports" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Reports</a>
@@ -48,11 +48,27 @@
     {% endif %}
 
     <!-- Main Content Area -->
-    <main class="flex-1 h-full overflow-y-auto">
-        <div class="max-w-5xl mx-auto p-8">
-            {% block content %}{% endblock %}
-        </div>
-    </main>
+    <div class="flex-1 flex flex-col h-full overflow-hidden">
+        {% if dashboard_page==true %}
+        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 shrink-0">
+            <div class="flex items-center space-x-4">
+            </div>
+            <div class="flex items-center">
+                <button hx-get="/journals" hx-target="body" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none" title="Add New" >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+        {% endif %}
+
+        <main class="flex-1 overflow-y-auto">
+            <div class="max-w-5xl mx-auto p-8">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
 
     <script>
         // Inject JWT into every HTMX request
