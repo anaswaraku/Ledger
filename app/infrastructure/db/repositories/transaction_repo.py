@@ -131,19 +131,17 @@ class TransactionRepository:
         # result.all() returns a list of Row objects containing (Transaction, TransactionEntry)
         return list(result.all())
 
-    async def recent_transactions(
-        self,journal_id:uuid.UUID
-    ):
-    query=(
-        select(Transaction)
-        .where (Transaction.journal_id ==journal_id )
-        .order_by(
-            Transaction.date.desc(),
-            Transaction.created_at.desc()
+    async def get_recent_transactions(
+        self, journal_id: uuid.UUID
+    ) -> list[Transaction]:
+        query = (
+            select(Transaction)
+            .options(
+                selectinload(Transaction.entries).selectinload(TransactionEntry.account)
+            )
+            .where(Transaction.journal_id == journal_id)
+            .order_by(Transaction.date.desc(), Transaction.created_at.desc())
+            .limit(10)
         )
-        .limit(10)
-    )
-    result = await self.db.execute(query)
-    return result.scalars().all()
-
-    
+        result = await self.db.execute(query)
+        return list(result.scalars().all())

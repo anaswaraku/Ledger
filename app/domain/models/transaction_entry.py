@@ -57,3 +57,10 @@ class TransactionEntry(UUIDMixin, Base):
         "Account",
         back_populates="entries",
     )
+
+    @property
+    def account_name(self) -> str | None:
+        try:
+            return self.account.name
+        except Exception:
+            return None

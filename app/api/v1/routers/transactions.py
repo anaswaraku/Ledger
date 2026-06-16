@@ -61,6 +61,22 @@ async def create_transaction(
 
 
 @router.get(
+    "/recent",
+    response_model=list[TransactionResponse],
+    summary="List recent transactions in a journal",
+)
+async def get_recent_transactions(
+    journal_id: UUID = Query(...),
+    service: TransactionService = Depends(get_transaction_service),
+    current_user: User = Depends(get_current_user),
+) -> list[TransactionResponse]:
+    return await service.get_recent_transactions(
+        journal_id=journal_id,
+        owner_id=current_user.id,
+    )
+
+
+@router.get(
     "/{txn_id}",
     response_model=TransactionResponse,
     summary="Get a single transaction by ID",
@@ -114,3 +130,4 @@ async def delete_transaction(
         journal_id=journal_id,
         owner_id=current_user.id,
     )
+

@@ -35,6 +35,7 @@ class TransactionEntryCreate(TransactionEntryBase):
 class TransactionEntryResponse(TransactionEntryBase):
     id: UUID
     transaction_id: UUID
+    account_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,3 +88,4 @@ class TransactionResponse(TransactionBase):
     entries: list[TransactionEntryResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
+

@@ -132,3 +132,10 @@ class TransactionService:
         await self.get_or_404(txn_id, journal_id, owner_id)
         await self.txn_repo.delete(txn_id, journal_id)
         logger.info("Transaction %s deleted from journal %s", txn_id, journal_id)
+    async def get_recent_transactions(
+        self, journal_id: uuid.UUID, owner_id: uuid.UUID
+    ) -> "list[Transaction]":
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=404, detail="Journal not found.")
+        return await self.txn_repo.get_recent_transactions(journal_id)

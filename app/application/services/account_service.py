@@ -90,7 +90,7 @@ class AccountService:
             raise HTTPException(status_code=404, detail="Journal not found.")
         return await self.account_repo.search_by_name_prefix(journal_id, prefix)
 
-    async def get_account_register(
+    async def get_account_register( 
         self, owner_id: uuid.UUID, journal_id: uuid.UUID, account_id: uuid.UUID
     ) -> list[RegisterEntryResponse]:
         """Returns chronological list of transactions with a running balance."""
@@ -119,3 +119,5 @@ class AccountService:
             ))
             
         return register
+
+    

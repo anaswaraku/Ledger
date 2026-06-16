@@ -57,7 +57,9 @@
     </a>
 </div>
 
-
+<h2>Recent Transactions</h2>
+<div id="recent-transactions-display" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -110,8 +112,73 @@
         }
     }
 
+    async function showRecentTransactions() {
+        const displayEl = document.getElementById("recent-transactions-display");
+        if (!displayEl) return;
+
+        const journalId = localStorage.getItem("selectedJournalId");
+        if (!journalId) {
+            displayEl.innerHTML = '<span class="text-sm text-gray-500 col-span-1 sm:col-span-2">Please select a journal from the sidebar.</span>';
+            return;
+        }
+
+        displayEl.innerHTML = '<span class="animate-pulse col-span-1 sm:col-span-2">Loading...</span>';
+
+        try {
+            const token = localStorage.getItem("access_token");
+            const response = await fetch('/api/v1/transactions/recent?journal_id=' + journalId, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            if (response.status === 401) {
+                window.location.href = "/auth/login";
+                return;
+            }
+            if (!response.ok) throw new Error("Failed to load recent transactions");
+
+            const txns = await response.json();
+
+            if (txns.length === 0) {
+                displayEl.innerHTML = '<p class="text-sm text-gray-500 col-span-1 sm:col-span-2">No recent transactions found.</p>';
+                return;
+            }
+
+            const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            });
+
+            let html = '<div class="col-span-1 sm:col-span-2 overflow-x-auto bg-white border border-gray-200 rounded-xl shadow-sm"><table class="min-w-full text-sm text-left"><thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-200"><tr><th class="px-6 py-4">Date</th><th class="px-6 py-4">Payee</th><th class="px-6 py-4">Description</th><th class="px-6 py-4">Account</th><th class="px-6 py-4 text-right">Entry Amount</th></tr></thead><tbody class="divide-y divide-gray-100">';
+            
+            txns.forEach(t => {
+                const payee = t.payee ? t.payee : '-';
+                const desc = t.description ? t.description : '-';
+                t.entries.forEach(entry => {
+                    const colorClass = entry.amount < 0 ? 'text-red-600' : 'text-green-600';
+                    const accName = entry.account_name ? entry.account_name : entry.account_id;
+                    html += `<tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">${t.date}</td>
+                        <td class="px-6 py-4 font-medium text-gray-900">${payee}</td>
+                        <td class="px-6 py-4 text-gray-700">${desc}</td>
+                        <td class="px-6 py-4 font-medium text-gray-600">${accName}</td>
+                        <td class="px-6 py-4 text-right font-medium ${colorClass}">${formatter.format(entry.amount)}</td>
+                    </tr>`;
+                });
+            });
+            
+            html += '</tbody></table></div>';
+            displayEl.innerHTML = html;
+        } catch (error) {
+            console.error(error);
+            displayEl.innerHTML = '<span class="text-red-500 col-span-1 sm:col-span-2">Error loading data</span>';
+        }
+    }
+
     // Automatically call it when page loads
     document.addEventListener("DOMContentLoaded", showNetWorth);
+    document.addEventListener("DOMContentLoaded", showRecentTransactions);
 
 
 </script>
