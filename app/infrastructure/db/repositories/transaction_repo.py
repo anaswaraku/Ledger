@@ -1,8 +1,8 @@
 # app/infrastructure/db/repositories/transaction_repo.py
 import uuid
 from datetime import date as date_type
-
-from sqlalchemy import select
+from decimal import Decimal
+from sqlalchemy import select,func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -39,14 +39,16 @@ class TransactionRepository:
         payee: str | None = None,
         description: str | None = None,
     ) -> list[Transaction]:
+        
+        running_balance = func.sum(TransactionEntry.amount).over(
+            partition_by=TransactionEntry.account,
+            order_by=[Transaction.date, Transaction.created_at],
+        ).label("running_balance")
+
         query = (
-            select(Transaction)
-            .where(Transaction.journal_id == journal_id)
-            .options(selectinload(Transaction.entries))
-            .order_by(Transaction.date.desc(), Transaction.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
+            select(Transaction, TransactionEntry,running_balance)
+        ).join(TransactionEntry,
+               TransactionEntry.transaction_id==Transaction.id).where(Transaction.journal_id==journal_id)
         if date_from:
             query = query.where(Transaction.date >= date_from)
         if date_to:
@@ -55,9 +57,11 @@ class TransactionRepository:
             query = query.where(Transaction.payee.ilike(f"%{payee}%"))
         if description:
             query = query.where(Transaction.description.ilike(f"%{description}%"))
-
+       
+        query = query.order_by(Transaction.date.desc(),                                   Transaction.created_at.desc()).offset(skip).limit(limit)
         result = await self.db.execute(query)
-        return list(result.scalars().all())
+        rows = result.all()
+        return rows
 
     async def create(
         self,
