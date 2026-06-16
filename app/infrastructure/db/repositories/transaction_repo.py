@@ -130,3 +130,20 @@ class TransactionRepository:
         result = await self.db.execute(query)
         # result.all() returns a list of Row objects containing (Transaction, TransactionEntry)
         return list(result.all())
+
+    async def recent_transactions(
+        self,journal_id:uuid.UUID
+    ):
+    query=(
+        select(Transaction)
+        .where (Transaction.journal_id ==journal_id )
+        .order_by(
+            Transaction.date.desc(),
+            Transaction.created_at.desc()
+        )
+        .limit(10)
+    )
+    result = await self.db.execute(query)
+    return result.scalars().all()
+
+    

@@ -11,7 +11,7 @@
 <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
     <h3 class="text-lg font-medium text-gray-900 mb-4">Create New Journal</h3>
     <form id="create-journal-form" hx-post="/api/v1/journals/" hx-ext="json-enc"
-          hx-target="#journal-list" hx-swap="beforeend" class="space-y-4">
+          hx-swap="none" class="space-y-4">
         
         <div>
             <label for="j-name" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -68,9 +68,16 @@
             const msg = document.getElementById("journal-create-msg");
             if (e.detail.xhr.status === 201) {
                 msg.innerHTML = '<span class="text-green-600">Journal created successfully.</span>';
-                el.reset();
-                // Reload list
-                htmx.ajax("GET", "/api/v1/journals/", {target: "#journal-list", swap: "outerHTML"});
+                // Set the newly created journal as selected
+                try {
+                    const newJournal = JSON.parse(e.detail.xhr.response);
+                    if (newJournal && newJournal.id) {
+                        localStorage.setItem('selectedJournalId', newJournal.id);
+                    }
+                } catch(err) {}
+
+                // Reload the page to update the sidebar dropdown and the journals list
+                window.location.reload();
             } else {
                 try {
                     const detail = JSON.parse(e.detail.xhr.response).detail;

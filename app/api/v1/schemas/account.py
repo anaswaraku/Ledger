@@ -22,12 +22,6 @@ class AccountCreate(AccountBase):
     journal_id: UUID
 
 
-#  Update Schema (partial input) 
-class AccountUpdate(BaseModel):
-    name: str | None = None
-    account_type: AccountType | None = None
-
-
 #  Response Schema (output) 
 class AccountResponse(AccountBase):
     id: UUID

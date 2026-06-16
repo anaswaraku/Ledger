@@ -23,7 +23,7 @@ def _make_service(db: AsyncSession) -> JournalService:
     response_model=JournalResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new accounting journal",
-)
+) 
 async def create_journal(
     data: JournalCreate,
     db: AsyncSession = Depends(get_db),

@@ -17,12 +17,12 @@ class TransactionEntryBase(BaseModel):
 
     @field_validator("currency")
     @classmethod
-    def currency_uppercase(cls, v: str) -> str:
+    def currency_uppercase(_cls, v: str) -> str:
         return v.strip().upper()
 
     @field_validator("amount")
     @classmethod
-    def amount_not_zero(cls, v: Decimal) -> Decimal:
+    def amount_not_zero(_cls, v: Decimal) -> Decimal:
         if v == 0:
             raise ValueError("Entry amount must not be zero.")
         return v
@@ -30,12 +30,6 @@ class TransactionEntryBase(BaseModel):
 
 class TransactionEntryCreate(TransactionEntryBase):
     pass
-
-
-class TransactionEntryUpdate(BaseModel):
-    account_id: UUID | None = None
-    amount: Decimal | None = None
-    currency: str | None = None
 
 
 class TransactionEntryResponse(TransactionEntryBase):
@@ -61,7 +55,7 @@ class TransactionCreate(TransactionBase):
     @field_validator("entries")
     @classmethod
     def validate_entries_double_entry(
-        cls, entries: list[TransactionEntryCreate],
+        _cls, entries: list[TransactionEntryCreate],
     ) -> list[TransactionEntryCreate]:
         """
         Delegate to the domain rule if single currency.
