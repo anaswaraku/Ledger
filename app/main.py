@@ -45,7 +45,7 @@ app.add_middleware(
 
 #  Routers ─
 
-from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies, charts, budgets  # noqa: E402
+from app.api.v1.routers import auth, transactions, accounts, reports, files, journals
 
 app.include_router(auth.router)
 app.include_router(journals.router)
@@ -53,9 +53,6 @@ app.include_router(transactions.router)
 app.include_router(accounts.router)
 app.include_router(reports.router)
 app.include_router(files.router) 
-app.include_router(currencies.router)
-app.include_router(charts.router)
-app.include_router(budgets.router)
 
 #  Root endpoints 
 
