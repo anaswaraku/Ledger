@@ -410,20 +410,20 @@ def test_transaction_must_balance():
 ## **5. Implementation Roadmap**
 
 ### **Phase 1: Core Foundation**
-- [ ] Project setup with professional structure
-- [ ] Database schema + SQLAlchemy models
-- [ ] User authentication (JWT)
-- [ ] Transaction CRUD endpoints
-- [ ] Double-entry validation logic
-- [ ] Basic unit tests
+- [✔️] Project setup with professional structure
+- [✔️] Database schema + SQLAlchemy models
+- [✔️] User authentication (JWT)
+- [✔️] Transaction CRUD endpoints
+- [✔️] Double-entry validation logic
+- [✔️] Basic unit tests
 
 ### **Phase 2: Accounting Features**
-- [ ] Account management
-- [ ] Balance sheet report
-- [ ] Income statement report
-- [ ] Account register report
-- [ ] CSV import/export
-- [ ] Search functionality
+- [✔️] Account management
+- [✔️] Balance sheet report
+- [✔️] Income statement report
+- [✔️] Account register report
+- [✔️] CSV import/export
+- [✔️] Search functionality
 
 ### **Phase 3: Advanced Features**
 - [ ] Multi-currency support
