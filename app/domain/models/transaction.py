@@ -69,14 +69,14 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
         balances: dict[str, Money]={}
 
         for entry in self.entries:
-            value = entry.cost_amount if entry.cost_money else entry.money
+            value = entry.cost_money if entry.cost_money else entry.money
 
             if value.currency in balances:
                 balances[value.currency]+=value
             else:
                 balances[value.currency]=value
 
-        for curr, total in self.balances.items():
+        for curr, total in balances.items():
             if total.amount !=Decimal("0"):
                 raise UnbalancedTransactionError(
                     f"Transaction does not balance. Currency {curr} has non zero {total.amount}"

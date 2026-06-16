@@ -61,10 +61,25 @@ class TransactionCreate(TransactionBase):
         _cls, entries: list[TransactionEntryCreate],
     ) -> list[TransactionEntryCreate]:
         """
-        Delegate to the domain rule if single currency.
-        For multi-currency, ensure at least 2 entries are present.
+        Validate that transaction entries satisfy double-entry balancing rules.
         """
-        currencies = {e.currency for e in entries if e.currency}
+        if len(entries) < 2:
+            raise ValueError(f"A transaction must have at least 2 entries, got {len(entries)}.")
+
+        balances: dict[str, Decimal] = {}
+        for e in entries:
+            if e.cost_amount is not None and e.cost_currency is not None:
+                sign = Decimal("-1") if e.amount < 0 else Decimal("1")
+                cost_val = abs(e.cost_amount) * sign
+                curr = e.cost_currency.strip().upper()
+                balances[curr] = balances.get(curr, Decimal("0")) + cost_val
+            else:
+                curr = e.currency.strip().upper()
+                balances[curr] = balances.get(curr, Decimal("0")) + e.amount
+
+        for curr, total in balances.items():
+            if total != Decimal("0"):
+                raise ValueError(f"Transaction does not balance for currency {curr}. Imbalance: {total:+.10f}")
         return entries
 
 

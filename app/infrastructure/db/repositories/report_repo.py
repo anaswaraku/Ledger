@@ -22,15 +22,16 @@ class ReportRepository:
 
     async def get_account_balances(
         self, journal_id: UUID, date_to: date | None = None, date_from: date | None = None
-    ) -> list[tuple[str, AccountType, Decimal]]:
+    ) -> list[tuple[str, AccountType, str, Decimal]]:
         """
         Calculates the sum of all transaction entries for each account in a journal.
-        Returns a list of tuples: (account_name, account_type, balance).
+        Returns a list of tuples: (account_name, account_type, commodity, balance).
         """
         query = (
             select(
                 Account.name,
                 Account.account_type,
+                TransactionEntry.commodity,
                 func.sum(TransactionEntry.amount).label("balance"),
             )
             .select_from(Account)
@@ -44,52 +45,54 @@ class ReportRepository:
         if date_from:
             query = query.where(Transaction.date >= date_from)
 
-        query = query.group_by(Account.id, Account.name, Account.account_type)
+        query = query.group_by(Account.id, Account.name, Account.account_type, TransactionEntry.commodity)
 
         result = await self.db.execute(query)
-        # SQLAlchemy rows act like tuples, but we return explicit typing
-        return [(row.name, row.account_type, row.balance or Decimal("0.0")) for row in result.all()]
+        return [(row.name, row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
 
-    #why cash instead of account?
-    async def get_cash_balance(self, journal_id:UUID, as_of:date)->Decimal:
-        """Return the total balanace of all Cash or Bank accounts right before the given date"""
+    async def get_cash_balances(self, journal_id: UUID, as_of: date) -> list[tuple[str, Decimal]]:
+        """Return the cash balances grouped by commodity right before the given date."""
         query = (
-            select(func.sum(TransactionEntry.amount).label("balance"))
+            select(
+                TransactionEntry.commodity,
+                func.sum(TransactionEntry.amount).label("balance")
+            )
             .select_from(Account)
             .join(TransactionEntry, Account.id == TransactionEntry.account_id)
             .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
-            .where(Account.journal_id==journal_id)
-            .where(Transaction.date<as_of)
-            .where(Account.account_type==AccountType.ASSET)
-            .where(Account.name.ilike("%cash")|Account.name.ilike("%bank"))
+            .where(Account.journal_id == journal_id)
+            .where(Transaction.date < as_of)
+            .where(Account.account_type == AccountType.ASSET)
+            .where(Account.name.ilike("%cash") | Account.name.ilike("%bank"))
+            .group_by(TransactionEntry.commodity)
         )
-        result=await self.db.execute(query)
-        row=result.scalar_one_or_none()
-        return row or Decimal("0.0")
+        result = await self.db.execute(query)
+        return [(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
     
     async def get_cash_movements(
-            self, journal_id:UUID,
+            self, journal_id: UUID,
             date_from: date,
             date_to: date,
-    )->list[tuple[str, Decimal]]:
-        """Returns the net movement for each account during the period"""
-        query=(
+    ) -> list[tuple[str, str, Decimal]]:
+        """Returns the net movement for each account and commodity during the period."""
+        query = (
             select(
                 Account.name,
+                TransactionEntry.commodity,
                 func.sum(TransactionEntry.amount).label("movement")
             )
             .select_from(Account)
             .join(TransactionEntry, Account.id == TransactionEntry.account_id)
             .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
-            .where(Account.journal_id==journal_id)
-            .where(Transaction.date>=date_from)
-            .where(Transaction.date<=date_to)
-            .where(Account.account_type==AccountType.ASSET)
-            .where(Account.name.ilike("%cash")|Account.name.ilike("%bank"))
-            .group_by(Account.id, Account.name)
+            .where(Account.journal_id == journal_id)
+            .where(Transaction.date >= date_from)
+            .where(Transaction.date <= date_to)
+            .where(Account.account_type == AccountType.ASSET)
+            .where(Account.name.ilike("%cash") | Account.name.ilike("%bank"))
+            .group_by(Account.id, Account.name, TransactionEntry.commodity)
         )
         result = await self.db.execute(query)
-        return [(row.name, row.movement or Decimal("0.0")) for row in result.all()]
+        return [(row.name, row.commodity, row.movement or Decimal("0.0")) for row in result.all()]
 
     async def get_investment_transactions_entries(
         self, journal_id: UUID, account_id: UUID | None = None, date_to: date | None = None
@@ -125,90 +128,39 @@ class ReportRepository:
         res = await self.db.execute(query)
         return [dict(row._mapping) for row in res.all()]
     
-    #net worth for dashboard
-    async def get_net_worth(self,journal_id: UUID):
-        """Return total networth for display"""
+    async def get_net_worth_balances(self, journal_id: UUID) -> list[tuple[AccountType, str, Decimal]]:
+        """Return balances of Asset and Liability accounts, grouped by account_type and commodity."""
         query = (
             select(
-                func.coalesce(
-                    func.sum(
-                        case(
-                            (Account.account_type==AccountType.ASSET,
-                             TransactionEntry.amount),else_=0,
-                        )
-                    ),0,
-                ).label("assets"),
-                func.coalesce(
-                    func.sum(
-                        case(
-                            (Account.account_type==AccountType.LIABILITY,
-                             TransactionEntry.amount),
-                             else_=0
-                        )
-                    ),0,
-                ).label("liabilities")
-            ).select_from(TransactionEntry)
-            .join(Account, Account.id == TransactionEntry.account_id)
-            .join(Journal, Journal.id ==Account.journal_id)
-            .where(Journal.id==journal_id)
-        )
-
-        result = await self.db.execute(query)
-        row = result.first()
-        assets = row.assets if row else Decimal("0.0")
-        liabilities = row.liabilities if row else Decimal("0.0")
-        
-        # In a ledger, liabilities are usually negative (credits). 
-        # Net worth is Assets + Liabilities (e.g., 1000 + (-400) = 600)
-        net_worth = assets + liabilities
-
-        # Convert liabilities to positive for display
-        return {
-            "assets": assets,
-            "liabilities": abs(liabilities),
-            "net_worth": net_worth
-        }
-
-    async def get_monthly_income(
-        self,
-        journal_id:UUID
-    ):
-        """Return a dict of {"monthly_income": amount} for all income in the journal for the current month."""
-        today=date.today()
-        first_date = today.replace(day=1)
-        _, last_day = calendar.monthrange(today.year, today.month)
-        last_date = today.replace(day=last_day)
-
-        query = (
-                select(
-                    func.coalesce(
-                        func.sum(TransactionEntry.amount),
-                        0
-                    ).label("monthly_income")
-                )
-                .join(
-                    Account,
-                    Account.id == TransactionEntry.account_id
-                )
-                .join(
-                    Transaction,
-                    Transaction.id == TransactionEntry.transaction_id
-                )
-                .where(
-                    Account.account_type == AccountType.INCOME,
-                    Account.journal_id == journal_id,
-                    func.date_trunc(
-                        "month",
-                        Transaction.date
-                    )
-                    == func.date_trunc(
-                        "month",
-                        func.current_date()
-                    )
-                )
+                Account.account_type,
+                TransactionEntry.commodity,
+                func.sum(TransactionEntry.amount).label("balance")
             )
+            .select_from(TransactionEntry)
+            .join(Account, Account.id == TransactionEntry.account_id)
+            .where(Account.journal_id == journal_id)
+            .where(Account.account_type.in_([AccountType.ASSET, AccountType.LIABILITY]))
+            .group_by(Account.account_type, TransactionEntry.commodity)
+        )
         result = await self.db.execute(query)
-        monthly_income = result.scalar_one_or_none() or Decimal("0.0")
-        return {
-            "monthly_income": monthly_income,
-        }
+        return [(row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+
+    async def get_monthly_income_balances(self, journal_id: UUID) -> list[tuple[str, Decimal]]:
+        """Return balances of Income accounts for the current month, grouped by commodity."""
+        query = (
+            select(
+                TransactionEntry.commodity,
+                func.sum(TransactionEntry.amount).label("balance")
+            )
+            .select_from(TransactionEntry)
+            .join(Account, Account.id == TransactionEntry.account_id)
+            .join(Transaction, Transaction.id == TransactionEntry.transaction_id)
+            .where(
+                Account.account_type == AccountType.INCOME,
+                Account.journal_id == journal_id,
+                func.date_trunc("month", Transaction.date) == func.date_trunc("month", func.current_date())
+            )
+            .group_by(TransactionEntry.commodity)
+        )
+        result = await self.db.execute(query)
+        return [(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]

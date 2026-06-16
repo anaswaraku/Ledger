@@ -43,8 +43,14 @@ class JournalRepository:
         owner_id: uuid.UUID,
         name: str,
         description: str | None = None,
+        base_currency: str = "USD",
     ) -> Journal:
-        journal = Journal(owner_id=owner_id, name=name, description=description)
+        journal = Journal(
+            owner_id=owner_id,
+            name=name,
+            description=description,
+            base_currency=base_currency,
+        )
         self.db.add(journal)
         await self.db.commit()
         await self.db.refresh(journal)

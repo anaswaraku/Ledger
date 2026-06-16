@@ -65,21 +65,23 @@ class TransactionEntry(UUIDMixin, Base):
         except Exception:
             return None
         
-    cost_amount=Mapped[Decimal | None]=mapped_column(
-        Numeric (28,10),
+    cost_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(28, 10),
         nullable=True
     )
-    cost_commodity: Mapped[str|None] = mapped_column(
+    cost_commodity: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True
     )
     @property
-    def money(self)->"Money":
+    def money(self) -> "Money":
         from app.domain.money import Money
-        return Money(self.amount,self.commodity)
+        return Money(self.amount, self.commodity)
     @property
-    def cost_money(self)->"Money | None":
+    def cost_money(self) -> "Money | None":
         from app.domain.money import Money
         if self.cost_amount is not None and self.cost_commodity is not None:
-            return Money(self.amount,self.commodity)
+            from decimal import Decimal
+            sign = Decimal("-1") if self.amount < 0 else Decimal("1")
+            return Money(abs(self.cost_amount) * sign, self.cost_commodity)
         return None

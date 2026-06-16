@@ -45,14 +45,15 @@ app.add_middleware(
 
 #  Routers ─
 
-from app.api.v1.routers import auth, transactions, accounts, reports, files, journals
+from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies
 
 app.include_router(auth.router)
 app.include_router(journals.router)
 app.include_router(transactions.router)
 app.include_router(accounts.router)
 app.include_router(reports.router)
-app.include_router(files.router) 
+app.include_router(files.router)
+app.include_router(currencies.router) 
 
 #  Root endpoints 
 
@@ -132,6 +133,10 @@ async def specific_report_page(
             "report_type": report_type,
         },
     )
+
+@app.get("/currencies", tags=["Web"], summary="Currencies page")
+async def currencies_page(request: Request):
+    return templates.TemplateResponse(request=request, name="currencies/currencies.html")
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:

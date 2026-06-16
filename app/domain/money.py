@@ -23,3 +23,17 @@ class Money:
         if self.currency != other.currency:
             raise CurrencyMismatchError(self.currency,other.currency)
         return Money(self.amount-other.amount,self.currency)
+    def __neg__(self) -> "Money":
+        return Money(-self.amount, self.currency)
+    def __mul__(self, other: Decimal) -> "Money":
+        if not isinstance(other, (int, Decimal)):
+            return NotImplemented
+        return Money(self.amount * other, self.currency)
+    def __rmul__(self, other: Decimal) -> "Money":
+        return self.__mul__(other)
+    def __truediv__(self, other: Decimal) -> "Money":
+        if not isinstance(other, (int, Decimal)):
+            return NotImplemented
+        return Money(self.amount / other, self.currency)
+    def convert(self, rate: Decimal, target_currency: str) -> "Money":
+        return Money(self.amount * rate, target_currency)

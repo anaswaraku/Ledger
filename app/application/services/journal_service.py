@@ -21,9 +21,13 @@ class JournalService:
         owner_id: uuid.UUID,
         name: str,
         description: str | None = None,
+        base_currency: str = "USD",
     ) -> Journal:
         journal = await self.journal_repo.create(
-            owner_id=owner_id, name=name, description=description
+            owner_id=owner_id,
+            name=name,
+            description=description,
+            base_currency=base_currency,
         )
         logger.info("Journal '%s' created for user %s", name, owner_id)
         return journal
@@ -52,3 +56,23 @@ class JournalService:
         journal = await self.get_or_404(journal_id, owner_id)
         await self.journal_repo.delete(journal)
         logger.info("Journal '%s' deleted by user %s", journal.name, owner_id)
+
+    async def update(
+        self,
+        journal_id: uuid.UUID,
+        owner_id: uuid.UUID,
+        name: str | None = None,
+        description: str | None = None,
+        base_currency: str | None = None,
+    ) -> Journal:
+        journal = await self.get_or_404(journal_id, owner_id)
+        if name is not None:
+            journal.name = name
+        if description is not None:
+            journal.description = description
+        if base_currency is not None:
+            journal.base_currency = base_currency
+        await self.journal_repo.db.commit()
+        await self.journal_repo.db.refresh(journal)
+        logger.info("Journal %s updated by user %s", journal_id, owner_id)
+        return journal

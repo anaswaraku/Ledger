@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.schemas.journal import JournalCreate, JournalResponse
+from app.api.v1.schemas.journal import JournalCreate, JournalResponse, JournalUpdate
 from app.application.services.journal_service import JournalService
 from app.dependencies import get_current_user
 from app.domain.models.user import User
@@ -33,6 +33,7 @@ async def create_journal(
         owner_id=current_user.id,
         name=data.name,
         description=data.description,
+        base_currency=data.base_currency,
     )
     return journal  # type: ignore[return-value]
 
@@ -73,3 +74,22 @@ async def delete_journal(
     current_user: User = Depends(get_current_user),
 ) -> None:
     await _make_service(db).delete(journal_id, current_user.id)
+
+
+@router.patch(
+    "/{journal_id}",
+    response_model=JournalResponse,
+    summary="Update a specific journal by ID",
+)
+async def update_journal(
+    journal_id: UUID,
+    data: JournalUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> JournalResponse:
+    journal = await _make_service(db).update(
+        journal_id=journal_id,
+        owner_id=current_user.id,
+        **data.model_dump(exclude_none=True),
+    )
+    return journal  # type: ignore[return-value]

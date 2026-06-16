@@ -69,6 +69,8 @@ class TransactionService:
                     "account_id": e.account_id,
                     "amount": e.amount,
                     "currency": e.currency,
+                    "cost_amount": e.cost_amount,
+                    "cost_currency": e.cost_currency,
                 }
                 for e in data.entries
             ],

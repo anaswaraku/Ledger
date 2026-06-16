@@ -40,6 +40,7 @@
 {% block scripts %}
 <script>
     let selectedJournalId = null;
+    let journalBaseCurrency = "USD";
 
     const currentReport = "{{ report_type }}";
 
@@ -62,7 +63,7 @@
         });
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.addEventListener("DOMContentLoaded", async () => {
 
         const jid = localStorage.getItem("selectedJournalId");
 
@@ -87,6 +88,16 @@
         }
 
         selectedJournalId = jid;
+
+        // Fetch journal base currency
+        try {
+            const journal = await fetchJson(`/api/v1/journals/${jid}`);
+            if (journal && journal.base_currency) {
+                journalBaseCurrency = journal.base_currency;
+            }
+        } catch (err) {
+            console.error("Error fetching journal base currency", err);
+        }
 
         document.getElementById("reports-section").style.display = "block";
 
@@ -135,8 +146,7 @@
 
         let url =
             `/api/v1/reports/${name}` +
-            `?journal_id=${selectedJournalId}` +
-            `&currency=USD`;
+            `?journal_id=${selectedJournalId}`;
 
         if (isPeriod) {
 
@@ -214,7 +224,7 @@
                 </strong>
 
                 <strong class="text-lg text-gray-900 font-mono">
-                    ${parseFloat(data.net).toFixed(2)}
+                    ${journalBaseCurrency} ${parseFloat(data.net).toFixed(2)}
                 </strong>
             </div>
         `;
@@ -236,7 +246,7 @@
                     </td>
 
                     <td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">
-                        ${val.toFixed(2)}
+                        ${journalBaseCurrency} ${val.toFixed(2)}
                     </td>
                 </tr>
             `;
@@ -269,7 +279,7 @@
                                 </td>
 
                                 <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">
-                                    ${total.toFixed(2)}
+                                    ${journalBaseCurrency} ${total.toFixed(2)}
                                 </td>
                             </tr>
                         </tfoot>
@@ -313,7 +323,7 @@
                 </strong>
 
                 <strong class="text-lg text-gray-900 font-mono ${parseFloat(data.net_income) < 0 ? 'text-red-600' : 'text-green-600'}">
-                    ${parseFloat(data.net_income).toFixed(2)}
+                    ${journalBaseCurrency} ${parseFloat(data.net_income).toFixed(2)}
                 </strong>
             </div>
         `;
@@ -346,7 +356,7 @@
 
             <div class="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
                 <strong>Beginning Cash Balance</strong>
-                <strong>$${parseFloat(data.beginning_balance).toFixed(2)}</strong>
+                <strong>${journalBaseCurrency} ${parseFloat(data.beginning_balance).toFixed(2)}</strong>
             </div>
 
             <div class="space-y-8 mb-6">
@@ -358,7 +368,7 @@
                 <strong>Net Cash Flow</strong>
 
                 <strong class="${parseFloat(data.net_cash_flow) < 0 ? 'text-red-600' : 'text-green-600'}">
-                    $${parseFloat(data.net_cash_flow).toFixed(2)}
+                    ${journalBaseCurrency} ${parseFloat(data.net_cash_flow).toFixed(2)}
                 </strong>
             </div>
 
@@ -367,8 +377,8 @@
                     Ending Cash Balance
                 </strong>
 
-                <strong class="text-lg">
-                    $${parseFloat(data.ending_balance).toFixed(2)}
+                <strong class="text-lg font-mono">
+                    ${journalBaseCurrency} ${parseFloat(data.ending_balance).toFixed(2)}
                 </strong>
             </div>
         `;

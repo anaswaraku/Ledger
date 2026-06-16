@@ -126,3 +126,43 @@ class TestAccountValidation:
         )
         with pytest.raises(AccountValidationError):
             validate_account_name("assets:bank account")  # space not allowed
+
+
+def test_transaction_balance_method():
+    from app.domain.models.transaction import Transaction
+    from app.domain.models.transaction_entry import TransactionEntry
+    from app.domain.money import UnbalancedTransactionError
+    import uuid
+
+    # Balanced standard
+    t1 = Transaction(id=uuid.uuid4(), journal_id=uuid.uuid4())
+    e1 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("100.00"), commodity="USD")
+    e2 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("-100.00"), commodity="USD")
+    t1.entries = [e1, e2]
+    assert t1.balance() is True
+
+    # Unbalanced standard
+    t2 = Transaction(id=uuid.uuid4(), journal_id=uuid.uuid4())
+    e3 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("100.00"), commodity="USD")
+    e4 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("-90.00"), commodity="USD")
+    t2.entries = [e3, e4]
+    with pytest.raises(UnbalancedTransactionError):
+        t2.balance()
+
+    # Balanced multi-currency with cost
+    t3 = Transaction(id=uuid.uuid4(), journal_id=uuid.uuid4())
+    e5 = TransactionEntry(
+        id=uuid.uuid4(),
+        amount=Decimal("-100.00"),
+        commodity="EUR",
+        cost_amount=Decimal("110.00"),
+        cost_commodity="USD",
+    )
+    e6 = TransactionEntry(
+        id=uuid.uuid4(),
+        amount=Decimal("110.00"),
+        commodity="USD",
+    )
+    t3.entries = [e5, e6]
+    assert t3.balance() is True
+

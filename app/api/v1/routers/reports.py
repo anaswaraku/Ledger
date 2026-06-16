@@ -11,6 +11,7 @@ from app.domain.models.user import User
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.report_repo import ReportRepository
+from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
 
 router = APIRouter(prefix="/api/v1/reports", tags=["Reports"])
 
@@ -19,6 +20,7 @@ def _make_report_service(db: AsyncSession) -> ReportService:
     return ReportService(
         report_repo=ReportRepository(db),
         journal_repo=JournalRepository(db),
+        market_price_repo=MarketPriceRepository(db),
     )
 
 

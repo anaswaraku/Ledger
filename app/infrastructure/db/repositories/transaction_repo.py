@@ -85,6 +85,8 @@ class TransactionRepository:
                     account_id=entry["account_id"],
                     amount=entry["amount"],
                     commodity=entry.get("currency", "USD"),
+                    cost_amount=entry.get("cost_amount"),
+                    cost_commodity=entry.get("cost_currency"),
                 )
             )
 

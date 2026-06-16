@@ -34,6 +34,12 @@ class Journal(UUIDMixin, TimestampMixin, Base):
         nullable=True,
     )
 
+    base_currency: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default="USD",
+    )
+
     # Relationships
     owner: Mapped["User"] = relationship(
         "User",
