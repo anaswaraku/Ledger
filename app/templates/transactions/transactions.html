@@ -84,20 +84,10 @@
         <div id="txn-msg" class="mt-4 text-sm font-medium"></div>
     </div>
 
-    <!-- Filters & Transaction History -->
+    <!-- Transaction History -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h3 class="text-lg font-medium text-gray-900 leading-6">Transaction History</h3>
-            
-            <div class="flex flex-wrap gap-2 text-sm items-center w-full sm:w-auto">
-                <input type="text" id="filter-payee" placeholder="Payee" class="w-24 sm:w-32 rounded-md border border-gray-300 px-2 py-1 focus:border-brand focus:outline-none">
-                <input type="text" id="filter-desc" placeholder="Desc" class="w-24 sm:w-32 rounded-md border border-gray-300 px-2 py-1 focus:border-brand focus:outline-none">
-                <input type="date" id="filter-from" class="w-32 rounded-md border border-gray-300 px-2 py-1 focus:border-brand focus:outline-none">
-                <input type="date" id="filter-to" class="w-32 rounded-md border border-gray-300 px-2 py-1 focus:border-brand focus:outline-none">
-                
-                <button onclick="loadTransactions()" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md border border-gray-300 transition-colors">Filter</button>
-                <button onclick="clearFilters()" class="px-3 py-1 text-gray-600 hover:text-gray-900 transition-colors">Clear</button>
-            </div>
         </div>
         
         <div id="txn-list" class="p-0">
@@ -229,24 +219,13 @@
              listEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
         }
         
-        const payee = document.getElementById("filter-payee").value;
-        const desc = document.getElementById("filter-desc").value;
-        const from = document.getElementById("filter-from").value;
-        const to = document.getElementById("filter-to").value;
+        const params = new URLSearchParams(window.location.search);
+        const payee = params.get('payee');
+        
         let url = "/api/v1/transactions/?journal_id=" + selectedJournalId;
         if (payee) url += "&payee=" + encodeURIComponent(payee);
-        if (desc) url += "&description=" + encodeURIComponent(desc);
-        if (from) url += "&date_from=" + from;
-        if (to) url += "&date_to=" + to;
+        
         fetchJson(url).then(renderTransactions);
-    }
-
-    function clearFilters() {
-        document.getElementById("filter-payee").value = "";
-        document.getElementById("filter-desc").value = "";
-        document.getElementById("filter-from").value = "";
-        document.getElementById("filter-to").value = "";
-        loadTransactions();
     }
 
     function renderTransactions(txns) {
