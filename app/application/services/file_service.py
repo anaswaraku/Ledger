@@ -16,7 +16,7 @@ from app.domain.rules.double_entry import validate_double_entry, DoubleEntryErro
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
-from app.infrastructure.external.csv_importer import ParsedRow, RowError, parse_csv
+from app.infrastructure.external.csv_importer import ParsedRow, RowError, parse_csv, parse_double_entry_csv, parse_account_csv
 
 logger = logging.getLogger(__name__)
 
@@ -100,9 +100,137 @@ class FileService:
         )
         return CSVImportResponse(imported=imported, skipped=len(errors), errors=errors)
 
+    async def import_transactions_csv(
+        self,
+        owner_id: uuid.UUID,
+        journal_id: uuid.UUID,
+        csv_content: str,
+    ) -> CSVImportResponse:
+        """Parse a double-entry CSV string and create transactions."""
+        from app.api.v1.schemas.transaction import TransactionCreate
+        from pydantic import ValidationError
+
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+
+        accounts = await self.account_repo.get_by_journal(journal_id)
+        account_name_map = {acc.name.lower(): acc.id for acc in accounts}
+
+        result = parse_double_entry_csv(csv_content)
+        errors = [CSVImportRowError(row=e.row, message=e.message) for e in result.errors]
+        imported = 0
+
+        # We start checking at row 2 because of headers, but we use the index from the parser which has the row number.
+        # Wait, the parser didn't attach the row number to ParsedDoubleEntryRow. Let's just track it.
+        # It's fine to just report "Row N" sequentially for successful parses that fail domain validation.
+        
+        row_num = 1 # Header is 1
+        for row in result.rows:
+            row_num += 1
+            acc1_id = account_name_map.get(row.account1_name.lower())
+            acc2_id = account_name_map.get(row.account2_name.lower())
+            
+            if not acc1_id or not acc2_id:
+                errors.append(CSVImportRowError(row=row_num, message=f"Account '{row.account1_name}' or '{row.account2_name}' does not exist."))
+                continue
+
+            entries_data = [
+                {"account_id": acc1_id, "amount": row.amount1, "currency": row.currency},
+                {"account_id": acc2_id, "amount": row.amount2, "currency": row.currency},
+            ]
+
+            try:
+                # Use Pydantic schema to validate double-entry constraints (sum = 0, no zero amounts)
+                tx_data = TransactionCreate(
+                    journal_id=journal_id,
+                    date=row.date,
+                    description=row.description,
+                    payee=row.payee,
+                    entries=entries_data
+                )
+            except ValidationError as e:
+                # Extract first error message
+                err_msg = e.errors()[0]["msg"]
+                errors.append(CSVImportRowError(row=row_num, message=f"Validation failed: {err_msg}"))
+                continue
+            
+            # If we get here, validation passed! Generate transaction
+            # The txn_repo.create auto-generates the UUID
+            await self.txn_repo.create(
+                journal_id=journal_id,
+                date=tx_data.date,
+                description=tx_data.description,
+                payee=tx_data.payee,
+                code=tx_data.code,
+                entries_data=[e.model_dump() for e in tx_data.entries],
+            )
+            imported += 1
+
+        logger.info(
+            "Double-Entry CSV import: %d imported, %d skipped for journal %s",
+            imported, len(errors), journal_id,
+        )
+        return CSVImportResponse(imported=imported, skipped=len(errors), errors=errors)
+
+    async def import_accounts_csv(
+        self,
+        owner_id: uuid.UUID,
+        journal_id: uuid.UUID,
+        csv_content: str,
+    ) -> CSVImportResponse:
+        """Parse an Accounts CSV string and create accounts."""
+        from app.api.v1.schemas.account import AccountCreate
+        from pydantic import ValidationError
+
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+
+        result = parse_account_csv(csv_content)
+        errors = [CSVImportRowError(row=e.row, message=e.message) for e in result.errors]
+        imported = 0
+
+        row_num = 1 # Header is 1
+        for row in result.rows:
+            row_num += 1
+
+            # Validate account schema (this checks if type is a valid AccountType)
+            try:
+                account_data = AccountCreate(
+                    name=row.name,
+                    account_type=row.account_type.upper(),
+                    journal_id=journal_id
+                )
+            except ValidationError as e:
+                # Extract first error message
+                err_msg = e.errors()[0]["msg"]
+                errors.append(CSVImportRowError(row=row_num, message=f"Validation failed: {err_msg}"))
+                continue
+
+            # Check if account name already exists in journal
+            existing_acc = await self.account_repo.get_by_name_and_journal(account_data.name, journal_id)
+            if existing_acc:
+                errors.append(CSVImportRowError(row=row_num, message=f"Account '{account_data.name}' already exists in this journal."))
+                continue
+
+            # Create account
+            await self.account_repo.create(
+                journal_id=journal_id,
+                name=account_data.name,
+                account_type=account_data.account_type,
+            )
+            imported += 1
+
+        logger.info(
+            "Account CSV import: %d imported, %d skipped for journal %s",
+            imported, len(errors), journal_id,
+        )
+        return CSVImportResponse(imported=imported, skipped=len(errors), errors=errors)
+
     # ── Export ─────────────────────────────────────────────────────────────────
 
-    async def export_csv(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
+    async def export_transactions_csv(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
         """Export all transactions in a journal as CSV text."""
         transactions = await self._get_all_transactions(owner_id, journal_id)
 
@@ -120,6 +248,26 @@ class FileService:
                     str(entry.amount),
                     entry.commodity,
                 ])
+
+        return output.getvalue()
+
+    async def export_accounts_csv(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
+        """Export all accounts in a journal as CSV text."""
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+
+        accounts = await self.account_repo.get_by_journal(journal_id)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Name", "Type"])
+
+        for acc in accounts:
+            writer.writerow([
+                acc.name,
+                acc.account_type.value,
+            ])
 
         return output.getvalue()
 

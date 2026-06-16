@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Import Accounts — Ledger{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Import Accounts</h2>
+    <p class="mt-2 text-sm text-gray-600">Upload a CSV file containing accounts to add them to your selected journal.</p>
+    
+    <div class="mt-4 p-4 bg-blue-50 text-blue-800 rounded-md border border-blue-200">
+        <h4 class="text-sm font-bold mb-2">Required CSV Columns:</h4>
+        <div class="flex flex-wrap gap-2 text-xs font-mono">
+            <span class="px-2 py-1 bg-white rounded border border-blue-100">name</span>
+            <span class="px-2 py-1 bg-white rounded border border-blue-100">type</span>
+        </div>
+        <p class="mt-2 text-xs text-blue-600">Note: valid types are ASSET, LIABILITY, EQUITY, INCOME, EXPENSE.</p>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div class="px-6 py-5 border-b border-gray-200 bg-gray-50">
+        <h3 class="text-lg font-medium text-gray-900 leading-6">Upload Accounts CSV</h3>
+    </div>
+    
+    <div class="p-6">
+        <div id="journal-warning" class="mb-6 p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200 hidden">
+            <p class="text-sm font-medium">Please select a journal from the sidebar before uploading.</p>
+        </div>
+
+        <form id="upload-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">CSV File</label>
+                <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-brand transition-colors">
+                    <div class="space-y-1 text-center">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        <div class="flex text-sm text-gray-600 justify-center">
+                            <label for="file-upload" class="relative cursor-pointer bg-white rounded-md font-medium text-brand hover:text-brand focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-brand">
+                                <span>Select a file</span>
+                                <input id="file-upload" name="file" type="file" accept=".csv" class="sr-only" required>
+                            </label>
+                            <p class="pl-1">or drag and drop</p>
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            CSV files only
+                        </p>
+                    </div>
+                </div>
+                <p id="file-name-display" class="mt-2 text-sm text-gray-500 font-medium"></p>
+            </div>
+
+            <div>
+                <button type="submit" id="submit-btn" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors">
+                    Upload Accounts
+                </button>
+            </div>
+        </form>
+
+        <div id="loading" class="hidden mt-6 text-center text-sm text-gray-500">
+            <p class="animate-pulse">Uploading and processing...</p>
+        </div>
+
+        <div id="results" class="hidden mt-8 border-t border-gray-200 pt-6">
+            <h4 class="text-lg font-medium text-gray-900 mb-4">Import Results</h4>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-green-50 p-4 rounded-md border border-green-200">
+                    <p class="text-sm font-medium text-green-800">Successfully Imported</p>
+                    <p class="mt-2 text-3xl font-bold text-green-600" id="success-count">0</p>
+                </div>
+                <div class="bg-red-50 p-4 rounded-md border border-red-200">
+                    <p class="text-sm font-medium text-red-800">Rows Skipped/Rejected</p>
+                    <p class="mt-2 text-3xl font-bold text-red-600" id="error-count">0</p>
+                </div>
+            </div>
+
+            <div id="error-list-container" class="hidden">
+                <h5 class="text-md font-medium text-gray-900 mb-2">Errors by Row</h5>
+                <div class="bg-red-50 rounded-md p-4 max-h-64 overflow-y-auto border border-red-200 text-sm text-red-800">
+                    <ul id="error-list" class="list-disc pl-5 space-y-1"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const fileInput = document.getElementById("file-upload");
+        const fileNameDisplay = document.getElementById("file-name-display");
+        const form = document.getElementById("upload-form");
+        const submitBtn = document.getElementById("submit-btn");
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+        const journalWarning = document.getElementById("journal-warning");
+
+        // Display selected file name
+        fileInput.addEventListener("change", (e) => {
+            if (e.target.files.length > 0) {
+                fileNameDisplay.textContent = "Selected: " + e.target.files[0].name;
+            } else {
+                fileNameDisplay.textContent = "";
+            }
+        });
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const journalId = localStorage.getItem("selectedJournalId");
+            if (!journalId) {
+                journalWarning.classList.remove("hidden");
+                return;
+            }
+            journalWarning.classList.add("hidden");
+
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // Prepare Form Data
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("journal_id", journalId);
+
+            // Update UI State
+            submitBtn.disabled = true;
+            submitBtn.classList.add("opacity-50", "cursor-not-allowed");
+            loading.classList.remove("hidden");
+            results.classList.add("hidden");
+
+            try {
+                const token = localStorage.getItem("access_token");
+                const response = await fetch("/api/v1/files/import-accounts-csv", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": token ? "Bearer " + token : ""
+                    },
+                    body: formData
+                });
+
+                if (response.status === 401) {
+                    window.location.href = "/auth/login";
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || "Failed to upload file");
+                }
+
+                // Show Results
+                document.getElementById("success-count").textContent = data.imported;
+                document.getElementById("error-count").textContent = data.skipped;
+
+                const errorListContainer = document.getElementById("error-list-container");
+                const errorList = document.getElementById("error-list");
+                
+                if (data.errors && data.errors.length > 0) {
+                    errorList.innerHTML = "";
+                    data.errors.forEach(err => {
+                        const li = document.createElement("li");
+                        li.textContent = `Row ${err.row}: ${err.message}`;
+                        errorList.appendChild(li);
+                    });
+                    errorListContainer.classList.remove("hidden");
+                } else {
+                    errorListContainer.classList.add("hidden");
+                }
+
+                results.classList.remove("hidden");
+                form.reset();
+                fileNameDisplay.textContent = "";
+
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                loading.classList.add("hidden");
+            }
+        });
+    });
+</script>
+{% endblock %}

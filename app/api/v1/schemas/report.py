@@ -4,21 +4,7 @@ from datetime import date
 from decimal import Decimal
 from app.api.v1.schemas.account import AccountType
 
-#  Query params 
-
-
-
-
-
-
-#  Shared line item 
-
-
-
-
-#  Balance Sheet 
-
-
+#  Balance Sheet
 class BalanceSheetResponse(BaseModel):
     date: date
     assets: dict[str, Decimal]
@@ -28,8 +14,6 @@ class BalanceSheetResponse(BaseModel):
 
 
 #  Income Statement 
-
-
 class IncomeStatementResponse(BaseModel):
     date_from: date
     date_to: date
@@ -49,7 +33,14 @@ class CashFlowStatementResponse(BaseModel):
     net_cash_flow: Decimal
     ending_balance: Decimal
 
+#networth
 class NetWorthResponse(BaseModel):
     assets:Decimal
     liabilities:Decimal
     net_worth:Decimal
+
+
+#monthly_income
+class MonthlyIncomeResponse(BaseModel):
+    monthly_income:Decimal
+

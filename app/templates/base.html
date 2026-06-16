@@ -32,19 +32,61 @@
             <strong class="text-xl font-bold tracking-tight text-gray-900"><a href="/dashboard">Ledger</a></strong>
         </div>
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-        <select name="journal-list" id="my-journal" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">
-            <option value="">Loading...</option>
-        </select>
-         <p class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">Overview</p>
-            <a href="/accounts" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Accounts</a>
-            <a href="/transactions" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Transactions</a>
-            <a href="/reports" class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Reports</a>
+            <select name="journal-list" id="my-journal"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">
+                <option value="">Loading...</option>
+            </select>
+            <!--Overview-->
+            <p
+                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                Overview</p>
+            <a href="/accounts"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Accounts</a>
+
+            <a href="/transactions"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Transactions</a>
+
+            <!--Reports-->
+            <p
+                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                Reports</p>
+            <a href="/reports/balance-sheet"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Balance
+                Sheet</a>
+            <a href="/reports/income-statement"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Income
+                Statement</a>
+            <a href="/reports/cash-flow"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Cashflow</a>
+            <!--Upload-->
+            <p
+                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                Upload Entries</p>
+            <a href="/accounts/import"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Upload
+                Accounts</a>
+            <a href="/transactions/import"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Upload
+                Transaction</a>
+
+            <!--Export-->
+            <p
+                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-700 transition-colors">
+                Export Data</p>
+            <a href="#" onclick="exportData('accounts', 'csv')"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Export
+                Accounts</a>
+            <a href="#" onclick="exportData('transactions', 'csv')"
+                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Export
+                Transactions</a>
+
         </nav>
         <div class="p-4 border-t border-gray-200">
-            <a href="#" onclick="logout()" class="block px-4 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">Logout</a>
+            <a href="#" onclick="logout()"
+                class="block px-4 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors">Logout</a>
         </div>
     </aside>
-  
+
     {% endif %}
 
     <!-- Main Content Area -->
@@ -54,8 +96,11 @@
             <div class="flex items-center space-x-4">
             </div>
             <div class="flex items-center">
-                <button hx-get="/journals" hx-target="body" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none" title="Add New" >
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <button hx-get="/journals" hx-target="body"
+                    class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none"
+                    title="Add New">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
                 </button>
@@ -93,57 +138,102 @@
             }
         });
 
-    document.addEventListener("DOMContentLoaded",()=>{
+        document.addEventListener("DOMContentLoaded", () => {
 
-        const dropdown= document.getElementById("my-journal");
-        const apiEndpoint="/api/v1/journals/";
-        const token = localStorage.getItem("access_token");
+            const dropdown = document.getElementById("my-journal");
+            const apiEndpoint = "/api/v1/journals/";
+            const token = localStorage.getItem("access_token");
 
-        fetch(apiEndpoint, {
-            headers: {
-                'Authorization': 'Bearer ' + token
-            }
-        }).then(
-            response=>{
-                if (!response.ok){
-                    throw new Error("Network response not ok");
+            fetch(apiEndpoint, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
                 }
-                return response.json();
-            }
-        ).then((data)=>{
-            dropdown.innerHTML='<option value="">Select a journal...</option>';
-            let savedJournalId = localStorage.getItem('selectedJournalId');
+            }).then(
+                response => {
+                    if (!response.ok) {
+                        throw new Error("Network response not ok");
+                    }
+                    return response.json();
+                }
+            ).then((data) => {
+                dropdown.innerHTML = '<option value="">Select a journal...</option>';
+                let savedJournalId = localStorage.getItem('selectedJournalId');
 
-            if (!savedJournalId && data.length > 0) {
-                savedJournalId = data[0].id;
-                localStorage.setItem('selectedJournalId', savedJournalId);
-                window.location.reload();
+                if (!savedJournalId && data.length > 0) {
+                    savedJournalId = data[0].id;
+                    localStorage.setItem('selectedJournalId', savedJournalId);
+                    window.location.reload();
+                    return;
+                }
+
+                data.forEach(item => {
+                    const option = document.createElement("option");
+                    option.value = item.id;
+                    option.textContent = item.name;
+                    if (item.id === savedJournalId) {
+                        option.selected = true;
+                    }
+                    dropdown.appendChild(option);
+                });
+
+                dropdown.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        localStorage.setItem('selectedJournalId', e.target.value);
+                    } else {
+                        localStorage.removeItem('selectedJournalId');
+                    }
+                    window.location.reload();
+                });
+            }).catch(error => {
+                console.error("error fetching", error);
+                dropdown.innerHTML = '<option value="">Failed to load</option>'
+            })
+        })
+
+        function exportData(entity, format) {
+            const journalId = localStorage.getItem('selectedJournalId');
+            if (!journalId) {
+                alert("Please select a journal first!");
                 return;
             }
-
-            data.forEach(item => {
-                const option=document.createElement("option");
-                option.value=item.id;
-                option.textContent=item.name;
-                if (item.id === savedJournalId) {
-                    option.selected = true;
+            const token = localStorage.getItem("access_token");
+            if (!token) {
+                window.location.href = "/auth/login";
+                return;
+            }
+            
+            fetch(`/api/v1/files/export?journal_id=${journalId}&format=${format}&entity=${entity}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
                 }
-                dropdown.appendChild(option);
-            });
-
-            dropdown.addEventListener('change', (e) => {
-                if (e.target.value) {
-                    localStorage.setItem('selectedJournalId', e.target.value);
-                } else {
-                    localStorage.removeItem('selectedJournalId');
+            })
+            .then(res => {
+                if (!res.ok) throw new Error("Failed to export data");
+                
+                let filename = `${entity}_export.${format}`;
+                const disposition = res.headers.get('Content-Disposition');
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    const matches = /filename="([^"]+)"/.exec(disposition);
+                    if (matches != null && matches[1]) filename = matches[1];
                 }
-                window.location.reload();
+
+                return res.blob().then(blob => ({ blob, filename }));
+            })
+            .then(({blob, filename}) => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Export failed: " + err.message);
             });
-        }).catch(error=>{
-            console.error("error fetching",error);
-            dropdown.innerHTML='<option value="">Failed to load</option>'
-        })
-    })
+        }
     </script>
 
     {% block scripts %}{% endblock %}

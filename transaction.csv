@@ -1,0 +1,11 @@
+date,payee,description,account1name,amount1,account2name,amount2,currency
+2025-01-05,ABC Corp,Monthly Salary,Assets:Cash,5000.00,Income:Salary,-5000.00,USD
+2025-01-07,Fresh Market,Groceries,Assets:Cash,-145.25,Expenses:Groceries,145.25,USD
+2025-01-10,Landlord,January Rent,Assets:Cash,-1200.00,Expenses:Rent,1200.00,USD
+2025-01-12,Utility Company,Electricity Bill,Assets:Cash,-95.40,Expenses:Utilities,95.40,USD
+2025-01-15,Fuel Station,Gas Refill,Assets:Cash,-60.75,Expenses:Transportation,60.75,USD
+2025-01-18,Freelance Client,Website Project,Assets:Cash,800.00,Income:Freelance,-800.00,USD
+2025-01-20,Credit Card Payment,Credit Card Bill,Liabilities:CreditCard,-500.00,Assets:Cash,500.00,USD
+2025-01-22,Brokerage Firm,ETF Purchase,Assets:Investments,1000.00,Assets:Cash,-1000.00,USD
+2025-01-25,Bank,Personal Loan Received,Assets:Cash,10000.00,Liabilities:Loan,-10000.00,USD
+2025-01-28,Owner,Capital Injection,Assets:Cash,2000.00,Equity:OwnerCapital,-2000.00,USD

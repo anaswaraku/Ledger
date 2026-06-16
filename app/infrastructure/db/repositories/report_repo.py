@@ -2,6 +2,8 @@
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
+import calendar
+import datetime
 
 from sqlalchemy import func, select, case,label
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,4 +167,48 @@ class ReportRepository:
             "assets": assets,
             "liabilities": abs(liabilities),
             "net_worth": net_worth
+        }
+
+    async def get_monthly_income(
+        self,
+        journal_id:UUID
+    ):
+        """Return a dict of {"monthly_income": amount} for all income in the journal for the current month."""
+        today=date.today()
+        first_date = today.replace(day=1)
+        _, last_day = calendar.monthrange(today.year, today.month)
+        last_date = today.replace(day=last_day)
+
+        query = (
+                select(
+                    func.coalesce(
+                        func.sum(TransactionEntry.amount),
+                        0
+                    ).label("monthly_income")
+                )
+                .join(
+                    Account,
+                    Account.id == TransactionEntry.account_id
+                )
+                .join(
+                    Transaction,
+                    Transaction.id == TransactionEntry.transaction_id
+                )
+                .where(
+                    Account.account_type == AccountType.INCOME,
+                    Account.journal_id == journal_id,
+                    func.date_trunc(
+                        "month",
+                        Transaction.date
+                    )
+                    == func.date_trunc(
+                        "month",
+                        func.current_date()
+                    )
+                )
+            )
+        result = await self.db.execute(query)
+        monthly_income = result.scalar_one_or_none() or Decimal("0.0")
+        return {
+            "monthly_income": monthly_income,
         }

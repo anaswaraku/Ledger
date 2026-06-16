@@ -105,16 +105,36 @@ async def journal_detail_page(request: Request, journal_id: UUID):
 async def accounts_page(request: Request):
     return templates.TemplateResponse(request=request, name="accounts/accounts.html")
 
+@app.get("/accounts/import", tags=["Web"], summary="Import accounts page")
+async def import_accounts_page(request: Request):
+    return templates.TemplateResponse(request=request, name="accounts/import.html")
+
 
 @app.get("/transactions", tags=["Web"], summary="Transactions page")
 async def transactions_page(request: Request):
     return templates.TemplateResponse(request=request, name="transactions/transactions.html")
+
+@app.get("/transactions/import", tags=["Web"], summary="Import transactions page")
+async def import_transactions_page(request: Request):
+    return templates.TemplateResponse(request=request, name="transactions/import.html")
 
 
 @app.get("/reports", tags=["Web"], summary="Reports page")
 async def reports_page(request: Request):
     return templates.TemplateResponse(request=request, name="reports/reports.html")
 
+@app.get("/reports/{report_type}", tags=["Web"], summary="Specific Report page")
+async def specific_report_page(
+    request: Request,
+    report_type: str
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="reports/reports.html",
+        context={
+            "report_type": report_type,
+        },
+    )
 
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:

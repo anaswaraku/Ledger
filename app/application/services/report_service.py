@@ -280,3 +280,19 @@ class ReportService:
         result = await self.report_repo.get_net_worth(journal_id)
         from app.api.v1.schemas.report import NetWorthResponse
         return NetWorthResponse(**result)
+
+    async def get_monthly_income(
+            self,
+            owner_id:UUID,
+            journal_id:UUID
+    ):
+        #verify journal
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id,owner_id)
+        if not journal:
+            raise HTTPException(status_code=404, detail="Journal Not Found")
+
+        result = await self.report_repo.get_monthly_income(journal_id)
+        from app.api.v1.schemas.report import MonthlyIncomeResponse
+        return MonthlyIncomeResponse(**result)
+
+    

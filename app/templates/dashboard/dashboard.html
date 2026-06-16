@@ -8,7 +8,7 @@
 </div>
 
 <!-- Dashboard Grid Links -->
-<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
     <a href="#" onclick="showNetWorth(event)" id="networth"
         class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
@@ -19,41 +19,31 @@
     </a>
 
 
-    <a href="/journals"
+    <a id="assets"
         class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Journals</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Assets</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
 
         </div>
-        <p class="mt-2 text-sm text-gray-500">Manage your ledgers and journal backups.</p>
+        <p class="mt-2 text-sm text-gray-500" id="assets-display"></p>
     </a>
 
-    <a href="/accounts"
+    <a 
         class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Accounts</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Liabilities</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
-        <p class="mt-2 text-sm text-gray-500">View balances, assets, liabilities, and equity.</p>
+        <p class="mt-2 text-sm text-gray-500" id="liabilities-display"></p>
     </a>
-
-    <a href="/transactions"
+     <a 
         class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Transactions</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Monthly Income</h3>
             <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
-        <p class="mt-2 text-sm text-gray-500">Record income, expenses, and transfers.</p>
-    </a>
-
-    <a href="/reports"
-        class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
-        <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900">Reports</h3>
-            <span class="text-brand opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-        </div>
-        <p class="mt-2 text-sm text-gray-500">Generate balance sheets and income statements.</p>
+        <p class="mt-2 text-sm text-gray-500" id="monthly-income-display"></p>
     </a>
 </div>
 
@@ -106,6 +96,28 @@
                 Liabilities: ${formatter.format(data.liabilities)}
             </span>
         `;
+
+        const assetsEl = document.getElementById("assets-display");
+        if(assetsEl){
+            assetsEl.innerHTML=`<span class="text-brand font-semibold text-xl">${formatter.format(data.assets)}</span><br><span class="text-xs text-gray-400">Assets</span>`
+        }
+        
+        const liabilitiesEl = document.getElementById("liabilities-display");
+        if(liabilitiesEl){
+            liabilitiesEl.innerHTML=`<span class="text-brand font-semibold text-xl">${formatter.format(data.liabilities)}</span><br><span class="text-xs text-gray-400">Liabilities</span>`
+        }
+
+        // Fetch Monthly Income
+        const incomeRes = await fetch('/api/v1/reports/monthly-income?journal_id=' + journalId, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (incomeRes.ok) {
+            const incomeData = await incomeRes.json();
+            const incomeEl = document.getElementById("monthly-income-display");
+            if (incomeEl) {
+                incomeEl.innerHTML = `<span class="text-brand font-semibold text-xl">${formatter.format(incomeData.monthly_income)}</span><br><span class="text-xs text-gray-400">This Month</span>`;
+            }
+        }
         } catch (error) {
             console.error(error);
             displayEl.innerHTML = '<span class="text-red-500">Error loading data</span>';

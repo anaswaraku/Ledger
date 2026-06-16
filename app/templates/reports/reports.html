@@ -10,11 +10,6 @@
 
 
 <section id="reports-section" style="display:none" class="space-y-6">
-    <nav class="flex flex-wrap gap-3">
-        <button onclick="loadReport('balance-sheet')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Balance Sheet</button>
-        <button onclick="loadReport('income-statement')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Income Statement</button>
-        <button onclick="loadReport('cash-flow')" class="px-4 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand transition-colors">Cash Flow</button>
-    </nav>
 
     <!-- Date range for period reports -->
     <div id="date-range" style="display:none" class="bg-gray-50 p-4 rounded-md border border-gray-200">
@@ -45,10 +40,12 @@
 {% block scripts %}
 <script>
     let selectedJournalId = null;
-    let currentReport = null;
+
+    const currentReport = "{{ report_type }}";
 
     function fetchJson(url, opts = {}) {
         const token = localStorage.getItem("access_token");
+
         return fetch(url, {
             ...opts,
             headers: {
@@ -57,160 +54,322 @@
                 ...(opts.headers || {})
             }
         }).then(r => {
-            if (r.status === 401) { localStorage.removeItem("access_token"); window.location.href = "/auth/login"; }
+            if (r.status === 401) {
+                localStorage.removeItem("access_token");
+                window.location.href = "/auth/login";
+            }
             return r.json();
         });
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+
         const jid = localStorage.getItem("selectedJournalId");
-        if (jid) {
-            selectedJournalId = jid;
-            document.getElementById("reports-section").style.display = "block";
-        } else {
+
+        if (!jid) {
             const warning = document.createElement("div");
-            warning.className = "bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 text-center text-sm text-gray-500";
-            warning.textContent = "Please select a journal from the sidebar.";
-            document.getElementById("reports-section").parentNode.insertBefore(warning, document.getElementById("reports-section"));
+
+            warning.className =
+                "bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 text-center text-sm text-gray-500";
+
+            warning.textContent =
+                "Please select a journal from the sidebar.";
+
+            document
+                .getElementById("reports-section")
+                .parentNode
+                .insertBefore(
+                    warning,
+                    document.getElementById("reports-section")
+                );
+
+            return;
         }
+
+        selectedJournalId = jid;
+
+        document.getElementById("reports-section").style.display = "block";
+
+        const isPeriod =
+            currentReport === "income-statement" ||
+            currentReport === "cash-flow";
+
+        document.getElementById("date-range").style.display =
+            isPeriod ? "block" : "none";
+
+        if (isPeriod) {
+            const today = new Date();
+
+            const firstDay = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1
+            );
+
+            document.getElementById("report-from").value =
+                firstDay.toISOString().split("T")[0];
+
+            document.getElementById("report-to").value =
+                today.toISOString().split("T")[0];
+        }
+
+        loadReport(currentReport);
     });
 
     function loadReport(name) {
-        currentReport = name;
+
         const output = document.getElementById("report-output");
-        output.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
 
-        const isPeriod = name === "income-statement" || name=="cash-flow";
-        document.getElementById("date-range").style.display = isPeriod ? "block" : "none";
+        output.innerHTML =
+            '<div class="flex items-center justify-center py-8">' +
+            '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>' +
+            '</div>';
 
-        let url = `/api/v1/reports/${name}?journal_id=${selectedJournalId}&currency=USD`;
+        const isPeriod =
+            name === "income-statement" ||
+            name === "cash-flow";
+
+        let url =
+            `/api/v1/reports/${name}` +
+            `?journal_id=${selectedJournalId}` +
+            `&currency=USD`;
 
         if (isPeriod) {
-            const from = document.getElementById("report-from").value;
-            const to = document.getElementById("report-to").value;
+
+            const from =
+                document.getElementById("report-from").value;
+
+            const to =
+                document.getElementById("report-to").value;
+
             if (!from || !to) {
-                output.innerHTML = "<p class='text-red-600 text-sm'>Please select a date range.</p>";
+                output.innerHTML =
+                    "<p class='text-red-600 text-sm'>Please select a date range.</p>";
                 return;
             }
+
             url += `&date_from=${from}&date_to=${to}`;
         }
 
-        fetchJson(url).then(data => {
-            if (name === "balance-sheet") renderBalanceSheet(data);
-            else if (name === "income-statement") renderIncomeStatement(data);
-            else if (name =="cash-flow") renderCashFlow(data);
-            else output.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
-        }).catch(() => {
-            output.innerHTML = "<p class='text-red-600 text-sm'>Error loading report.</p>";
-        });
+        fetchJson(url)
+            .then(data => {
+
+                if (name === "balance-sheet") {
+                    renderBalanceSheet(data);
+                }
+                else if (name === "income-statement") {
+                    renderIncomeStatement(data);
+                }
+                else if (name === "cash-flow") {
+                    renderCashFlow(data);
+                }
+                else {
+                    output.innerHTML =
+                        "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
+                        JSON.stringify(data, null, 2) +
+                        "</pre>";
+                }
+
+            })
+            .catch(() => {
+                output.innerHTML =
+                    "<p class='text-red-600 text-sm'>Error loading report.</p>";
+            });
     }
 
     function renderBalanceSheet(data) {
         const el = document.getElementById("report-output");
+
         if (!data || !data.assets) {
-            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
+            el.innerHTML =
+                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
+                JSON.stringify(data, null, 2) +
+                "</pre>";
             return;
         }
+
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900">Balance Sheet</h3>
-                <p class="text-sm text-gray-500">As of ${data.date}</p>
+                <h3 class="text-xl font-bold text-gray-900">
+                    Balance Sheet
+                </h3>
+                <p class="text-sm text-gray-500">
+                    As of ${data.date}
+                </p>
             </div>
+
             <div class="space-y-8">
                 ${renderDictSection("Assets", data.assets)}
                 ${renderDictSection("Liabilities", data.liabilities)}
                 ${renderDictSection("Equity", data.equity)}
             </div>
+
             <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
-                <strong class="text-lg text-gray-900">Net Assets</strong>
-                <strong class="text-lg text-gray-900 font-mono">${parseFloat(data.net).toFixed(2)}</strong>
+                <strong class="text-lg text-gray-900">
+                    Net Assets
+                </strong>
+
+                <strong class="text-lg text-gray-900 font-mono">
+                    ${parseFloat(data.net).toFixed(2)}
+                </strong>
             </div>
         `;
     }
 
     function renderDictSection(title, dictData) {
+
         let rows = "";
         let total = 0;
+
         for (const [name, balance] of Object.entries(dictData)) {
+
             const val = parseFloat(balance);
-            rows += `<tr class="hover:bg-gray-50"><td class="py-2 pl-4 text-sm text-gray-700">${name}</td><td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">${val.toFixed(2)}</td></tr>`;
+
+            rows += `
+                <tr class="hover:bg-gray-50">
+                    <td class="py-2 pl-4 text-sm text-gray-700">
+                        ${name}
+                    </td>
+
+                    <td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">
+                        ${val.toFixed(2)}
+                    </td>
+                </tr>
+            `;
+
             total += val;
         }
-        if (!rows) rows = "<tr><td colspan='2' class='py-2 px-4 text-sm text-gray-500 italic'>None</td></tr>";
-        
+
+        if (!rows) {
+            rows =
+                "<tr><td colspan='2' class='py-2 px-4 text-sm text-gray-500 italic'>None</td></tr>";
+        }
+
         return `
             <div>
-                <h4 class="text-md font-semibold text-gray-800 mb-2">${title}</h4>
+                <h4 class="text-md font-semibold text-gray-800 mb-2">
+                    ${title}
+                </h4>
+
                 <div class="bg-white border border-gray-200 rounded-md overflow-hidden">
                     <table class="min-w-full divide-y divide-gray-200">
+
                         <tbody class="divide-y divide-gray-200">
                             ${rows}
                         </tbody>
+
                         <tfoot class="bg-gray-50 border-t border-gray-200">
                             <tr>
-                                <td class="py-3 pl-4 text-sm font-medium text-gray-900">Total ${title}</td>
-                                <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">${total.toFixed(2)}</td>
+                                <td class="py-3 pl-4 text-sm font-medium text-gray-900">
+                                    Total ${title}
+                                </td>
+
+                                <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">
+                                    ${total.toFixed(2)}
+                                </td>
                             </tr>
                         </tfoot>
+
                     </table>
                 </div>
-            </div>`;
+            </div>
+        `;
     }
 
     function renderIncomeStatement(data) {
         const el = document.getElementById("report-output");
+
         if (!data || !data.income) {
-            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
+            el.innerHTML =
+                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
+                JSON.stringify(data, null, 2) +
+                "</pre>";
             return;
         }
+
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900">Income Statement</h3>
-                <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
+                <h3 class="text-xl font-bold text-gray-900">
+                    Income Statement
+                </h3>
+
+                <p class="text-sm text-gray-500">
+                    Period: ${data.date_from} to ${data.date_to}
+                </p>
             </div>
+
             <div class="space-y-8">
                 ${renderDictSection("Income", data.income)}
                 ${renderDictSection("Expenses", data.expenses)}
             </div>
+
             <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
-                <strong class="text-lg text-gray-900">Net Income</strong>
-                <strong class="text-lg text-gray-900 font-mono ${parseFloat(data.net_income) < 0 ? 'text-red-600' : 'text-green-600'}">${parseFloat(data.net_income).toFixed(2)}</strong>
+                <strong class="text-lg text-gray-900">
+                    Net Income
+                </strong>
+
+                <strong class="text-lg text-gray-900 font-mono ${parseFloat(data.net_income) < 0 ? 'text-red-600' : 'text-green-600'}">
+                    ${parseFloat(data.net_income).toFixed(2)}
+                </strong>
             </div>
         `;
     }
 
-    function renderCashFlow(data){
+    function renderCashFlow(data) {
+
         const el = document.getElementById("report-output");
-        if (!data || data.beginning_balance ===undefined){
-            el.innerHTML="<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>"+JSON.stringify(data, null, 2)+"</pre>";
+
+        if (!data || data.beginning_balance === undefined) {
+
+            el.innerHTML =
+                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
+                JSON.stringify(data, null, 2) +
+                "</pre>";
+
             return;
         }
-        el.innerHTML=`
-        <div class="mb-6 pb-4 border-b border-gray-200">
-            <h3 class="text-xl font-bold text-gray-900">Cash Flow Statement</h3>
-            <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
-        </div>
-        
-        <div class="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
-            <strong class="text-sm text-gray-700">Beginning Cash Balance</strong>
-            <strong class="text-sm font-mono text-gray-900">$${parseFloat(data.beginning_balance).toFixed(2)}</strong>
-        </div>
-        
-        <div class="space-y-8 mb-6">
-            ${renderDictSection("Cash Inflows", data.inflows)}
-            ${renderDictSection("Cash Outflows", data.outflows)}
-        </div>
-        
-        <div class="flex justify-between items-center mb-6 px-4 py-3 border-b border-gray-200">
-            <strong class="text-sm text-gray-700">Net Cash Flow</strong>
-            <strong class="text-sm font-mono ${parseFloat(data.net_cash_flow) < 0 ? 'text-red-600' : 'text-green-600'}">$${parseFloat(data.net_cash_flow).toFixed(2)}</strong>
-        </div>
-        
-        <div class="flex justify-between items-center pt-2">
-            <strong class="text-lg text-gray-900">Ending Cash Balance</strong>
-            <strong class="text-lg font-mono text-gray-900">$${parseFloat(data.ending_balance).toFixed(2)}</strong>
-        </div>
+
+        el.innerHTML = `
+            <div class="mb-6 pb-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900">
+                    Cash Flow Statement
+                </h3>
+
+                <p class="text-sm text-gray-500">
+                    Period: ${data.date_from} to ${data.date_to}
+                </p>
+            </div>
+
+            <div class="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
+                <strong>Beginning Cash Balance</strong>
+                <strong>$${parseFloat(data.beginning_balance).toFixed(2)}</strong>
+            </div>
+
+            <div class="space-y-8 mb-6">
+                ${renderDictSection("Cash Inflows", data.inflows)}
+                ${renderDictSection("Cash Outflows", data.outflows)}
+            </div>
+
+            <div class="flex justify-between items-center mb-6 px-4 py-3 border-b border-gray-200">
+                <strong>Net Cash Flow</strong>
+
+                <strong class="${parseFloat(data.net_cash_flow) < 0 ? 'text-red-600' : 'text-green-600'}">
+                    $${parseFloat(data.net_cash_flow).toFixed(2)}
+                </strong>
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                <strong class="text-lg">
+                    Ending Cash Balance
+                </strong>
+
+                <strong class="text-lg">
+                    $${parseFloat(data.ending_balance).toFixed(2)}
+                </strong>
+            </div>
         `;
     }
 </script>
+
+
 {% endblock %}
