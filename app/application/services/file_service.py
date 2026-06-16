@@ -233,20 +233,32 @@ class FileService:
     async def export_transactions_csv(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
         """Export all transactions in a journal as CSV text."""
         transactions = await self._get_all_transactions(owner_id, journal_id)
+        
+        # Reverse to chronological order to calculate running balance
+        transactions = list(reversed(transactions))
+        
+        accounts = await self.account_repo.get_by_journal(journal_id)
+        account_name_map = {acc.id: acc.name for acc in accounts}
 
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(["Date", "Description", "Payee", "Account ID", "Amount", "Currency"])
+        writer.writerow(["Date", "Description", "Payee", "Account Name", "Amount", "Currency", "Balance"])
+
+        balances = {}
 
         for txn in transactions:
             for entry in txn.entries:
+                current_balance = balances.get(entry.account_id, Decimal("0")) + entry.amount
+                balances[entry.account_id] = current_balance
+                
                 writer.writerow([
                     txn.date.isoformat(),
                     txn.description,
                     txn.payee or "",
-                    str(entry.account_id),
+                    account_name_map.get(entry.account_id, "Unknown"),
                     str(entry.amount),
                     entry.commodity,
+                    str(current_balance),
                 ])
 
         return output.getvalue()
