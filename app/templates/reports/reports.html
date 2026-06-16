@@ -106,11 +106,15 @@
                 1
             );
 
-            document.getElementById("report-from").value =
-                firstDay.toISOString().split("T")[0];
+            const formatDateLocal = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
 
-            document.getElementById("report-to").value =
-                today.toISOString().split("T")[0];
+            document.getElementById("report-from").value = formatDateLocal(firstDay);
+            document.getElementById("report-to").value = formatDateLocal(today);
         }
 
         loadReport(currentReport);
