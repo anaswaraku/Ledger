@@ -11,6 +11,10 @@ from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
 
+from app.domain.models.transaction import Transaction as DomainTransaction
+from app.domain.models.transaction_entry import TransactionEntry as DomainTransactionEntry
+from app.domain.money import UnbalancedTransactionError
+
 logger = logging.getLogger(__name__)
 
 

@@ -1,16 +1,7 @@
 name,type
-Assets:Cash,ASSET
 Assets:Checking,ASSET
+Assets:Cash,ASSET
 Assets:Savings,ASSET
-Assets:Investments,ASSET
-Liabilities:CreditCard,LIABILITY
-Liabilities:Loan,LIABILITY
-Equity:OwnerCapital,EQUITY
 Income:Salary,INCOME
 Income:Freelance,INCOME
 Income:Interest,INCOME
-Expenses:Rent,EXPENSE
-Expenses:Groceries,EXPENSE
-Expenses:Utilities,EXPENSE
-Expenses:Transportation,EXPENSE
-Expenses:Entertainment,EXPENSE

@@ -14,6 +14,8 @@ class TransactionEntryBase(BaseModel):
     account_id: UUID
     amount: Decimal
     currency: str = "USD"
+    cost_amount: Decimal | None=None
+    cost_currency:str | None=None
 
     @field_validator("currency")
     @classmethod
@@ -63,14 +65,6 @@ class TransactionCreate(TransactionBase):
         For multi-currency, ensure at least 2 entries are present.
         """
         currencies = {e.currency for e in entries if e.currency}
-        if len(currencies) <= 1:
-            try:
-                validate_double_entry([e.amount for e in entries])
-            except DoubleEntryError as exc:
-                raise ValueError(str(exc))
-        else:
-            if len(entries) < 2:
-                raise ValueError("A transaction must have at least 2 entries.")
         return entries
 
 
