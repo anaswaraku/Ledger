@@ -279,3 +279,57 @@ class ReportService:
         return MonthlyIncomeResponse(
             monthly_income=monthly_income,
         )
+
+    async def generate_roi_report(
+        self,
+        owner_id: UUID,
+        journal_id: UUID,
+        as_of: date
+    ):
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Journal Not Found")
+
+        balances = await self.report_repo.get_roi_balances(journal_id, as_of)
+
+        assets = []
+        missing_rates: list[dict] = []
+
+        from app.api.v1.schemas.report import ROIAssetResponse, ROIReportResponse
+
+        for name, commodity, quantity, cost_amount, cost_commodity in balances:
+            if quantity == Decimal("0.0") or cost_amount == Decimal("0.0"):
+                continue
+
+            try:
+                current_value = await self._convert_amount(quantity, commodity, cost_commodity, as_of)
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
+
+            gain = current_value - cost_amount
+            roi_percent = (gain / cost_amount) * 100
+
+            assets.append(
+                ROIAssetResponse(
+                    account_name=name,
+                    commodity=commodity,
+                    cost_commodity=cost_commodity,
+                    quantity=quantity,
+                    cost_basis=cost_amount,
+                    current_value=current_value,
+                    gain=gain,
+                    roi_percent=roi_percent
+                )
+            )
+
+        if missing_rates:
+            missing_rates = _deduplicate(missing_rates)
+
+        return ROIReportResponse(
+            date=as_of,
+            assets=assets,
+            is_complete=len(missing_rates) == 0,
+            missing_rates=missing_rates if missing_rates else None
+        )

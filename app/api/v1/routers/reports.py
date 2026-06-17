@@ -153,3 +153,21 @@ async def get_monthly_income(
                 "missing_rates": e.missing_rates
             }
         )
+
+from app.api.v1.schemas.report import ROIReportResponse
+
+@router.get("/roi", response_model=ROIReportResponse, summary="Generate ROI report")
+async def get_roi_report(
+    journal_id: UUID = Query(...),
+    date: date | None = Query(default=None, description="As of date (default: today)"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ROIReportResponse:
+    """Returns the ROI for all asset accounts with a cost basis."""
+    from datetime import date as date_type
+    as_of = date or date_type.today()
+    return await _make_report_service(db).generate_roi_report(
+        owner_id=current_user.id,
+        journal_id=journal_id,
+        as_of=as_of,
+    )

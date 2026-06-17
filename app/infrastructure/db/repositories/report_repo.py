@@ -44,6 +44,14 @@ class MonthlyIncomeBalance(NamedTuple):
     balance: Decimal
 
 
+class ROIBalance(NamedTuple):
+    name: str
+    commodity: str
+    quantity: Decimal
+    cost_amount: Decimal
+    cost_commodity: str
+
+
 class ReportRepository:
     """Data-access layer for financial reporting aggregations."""
 
@@ -194,3 +202,33 @@ class ReportRepository:
         )
         result = await self.db.execute(query)
         return [MonthlyIncomeBalance(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+
+    async def get_roi_balances(self, journal_id: UUID, as_of: date) -> list[ROIBalance]:
+        """Return balances of Asset accounts that have a cost basis, grouped by commodity and cost_commodity."""
+        
+        # We subtract cost_amount when we sell (amount < 0), otherwise we add it.
+        cost_basis_expr = case(
+            (TransactionEntry.amount < 0, -func.abs(TransactionEntry.cost_amount)),
+            else_=func.abs(TransactionEntry.cost_amount)
+        )
+
+        query = (
+            select(
+                Account.name,
+                TransactionEntry.commodity,
+                func.sum(TransactionEntry.amount).label("quantity"),
+                func.sum(cost_basis_expr).label("cost_amount"),
+                TransactionEntry.cost_commodity
+            )
+            .select_from(Account)
+            .join(TransactionEntry, Account.id == TransactionEntry.account_id)
+            .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
+            .where(Account.journal_id == journal_id)
+            .where(Transaction.date <= as_of)
+            .where(Account.account_type == AccountType.ASSET)
+            .where(TransactionEntry.cost_amount.isnot(None))
+            .where(TransactionEntry.cost_commodity.isnot(None))
+            .group_by(Account.name, TransactionEntry.commodity, TransactionEntry.cost_commodity)
+        )
+        result = await self.db.execute(query)
+        return [ROIBalance(row.name, row.commodity, row.quantity or Decimal("0.0"), row.cost_amount or Decimal("0.0"), row.cost_commodity) for row in result.all()]

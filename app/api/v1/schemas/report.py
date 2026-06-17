@@ -44,3 +44,20 @@ class NetWorthResponse(BaseModel):
 class MonthlyIncomeResponse(BaseModel):
     monthly_income:Decimal
 
+# ROI Report
+class ROIAssetResponse(BaseModel):
+    account_name: str
+    commodity: str
+    cost_commodity: str
+    quantity: Decimal
+    cost_basis: Decimal
+    current_value: Decimal
+    gain: Decimal
+    roi_percent: Decimal
+
+class ROIReportResponse(BaseModel):
+    date: date
+    assets: list[ROIAssetResponse]
+    is_complete: bool
+    missing_rates: list[dict] | None = None
+
