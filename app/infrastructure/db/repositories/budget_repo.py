@@ -12,7 +12,7 @@ from app.domain.models.budget import Budget
 
 class BudgetRepository:
     """Data-access layer for the Budget entity."""
-
+ 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
@@ -32,7 +32,7 @@ class BudgetRepository:
         amount: Decimal,
         period: str,
         start_date: date_type,
-        end_date: date_type,
+        end_date: date_type ,
     ) -> Budget:
         budget = Budget(
             journal_id=journal_id,

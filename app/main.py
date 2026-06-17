@@ -45,7 +45,7 @@ app.add_middleware(
 
 #  Routers ─
 
-from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies
+from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies, budgets
 
 app.include_router(auth.router)
 app.include_router(journals.router)
@@ -54,6 +54,7 @@ app.include_router(accounts.router)
 app.include_router(reports.router)
 app.include_router(files.router)
 app.include_router(currencies.router) 
+app.include_router(budgets.router)
 
 #  Root endpoints 
 
@@ -138,6 +139,12 @@ async def specific_report_page(
 async def currencies_page(request: Request):
     return templates.TemplateResponse(request=request, name="currencies/currencies.html")
 
+@app.get("/budget",tags=["Web"],summary="Budget Tracking")
+async def buget_page(request:Request):
+    return templates.TemplateResponse(request=request,
+                                      name="budget/budget.html"
+                                      )
+    
 @app.get("/health", tags=["Health"], summary="Health check")
 async def health() -> dict[str, str]:
     """Used by Docker, load-balancers, and uptime monitors."""

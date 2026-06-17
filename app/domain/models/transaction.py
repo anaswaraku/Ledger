@@ -67,7 +67,7 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
         from decimal import Decimal
 
         balances: dict[str, Money] = {}
-
+        #if costmoney exists use it otherwise use standard money
         for entry in self.entries:
             value = entry.cost_money if entry.cost_money else entry.money
 

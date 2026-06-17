@@ -33,7 +33,7 @@ class Journal(UUIDMixin, TimestampMixin, Base):
         Text,
         nullable=True,
     )
-
+    #default usd
     base_currency: Mapped[str] = mapped_column(
         String(10),
         nullable=False,
