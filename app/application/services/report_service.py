@@ -309,7 +309,7 @@ class ReportService:
                 continue
 
             gain = current_value - cost_amount
-            roi_percent = (gain / cost_amount) * 100
+            roi_percent = (gain / abs(cost_amount)) * 100
 
             assets.append(
                 ROIAssetResponse(
