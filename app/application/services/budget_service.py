@@ -10,6 +10,8 @@ from app.domain.models.budget import Budget
 from app.infrastructure.db.repositories.budget_repo import BudgetRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.account_repo import AccountRepository
+from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
+from app.domain.money import MissingExchangeRateError, MissingExchangeRatesCollectedError
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +22,30 @@ class BudgetService:
         self, 
         budget_repo: BudgetRepository, 
         journal_repo: JournalRepository,
-        account_repo: AccountRepository = None
+        account_repo: AccountRepository = None,
+        market_price_repo: MarketPriceRepository = None
     ) -> None:
         self.budget_repo = budget_repo
         self.journal_repo = journal_repo
         self.account_repo = account_repo
+        self.market_price_repo = market_price_repo
+
+    async def _convert_amount(
+        self, amount: Decimal, from_currency: str, to_currency: str, as_of: date
+    ) -> Decimal:
+        """Converts currency using the historical market price repository."""
+        if from_currency.upper() == to_currency.upper():
+            return amount
+            
+        rate = await self.market_price_repo.get_rate(from_currency, to_currency, as_of)
+        if rate is None:
+            logger.error(
+                "Missing exchange rate: %s -> %s on %s for amount %s",
+                from_currency, to_currency, as_of, amount
+            )
+            raise MissingExchangeRateError(from_currency, to_currency, as_of, amount)
+            
+        return amount * rate
 
     async def create(
         self,
@@ -32,6 +53,7 @@ class BudgetService:
         journal_id: uuid.UUID,
         account_id: uuid.UUID,
         amount: Decimal,
+        currency: str,
         period: str,
         start_date: date,
         end_date: date,
@@ -56,6 +78,7 @@ class BudgetService:
             journal_id=journal_id,
             account_id=account_id,
             amount=amount,
+            currency=currency,
             period=period,
             start_date=start_date,
             end_date=end_date,
@@ -87,29 +110,50 @@ class BudgetService:
         self, budget_id: uuid.UUID, journal_id: uuid.UUID, owner_id: uuid.UUID
     ) -> dict:
         """
-        Fetches a budget and calculates exactly how much has been spent.
+        Fetches a budget and calculates exactly how much has been spent,
+        converting all transaction currencies into the Budget's specific currency.
         """
-        # 1. Get the budget (automatically handles 404s and permissions)
+        # 1. Get the budget
         budget = await self.get_or_404(budget_id, journal_id, owner_id)
 
-        # 2. Calculate the math by asking the repository for actual spending
-        spend_amount = await self.budget_repo.get_actual_amount(
+        # 2. Ask the repository for actual spending entries
+        entries = await self.budget_repo.get_spending_entries(
             account_id=budget.account_id,
             start_date=budget.start_date,
             end_date=budget.end_date
         )
 
-        # Expense might be positive or negative. Use abs() for the progress bar.
-        actual_spend = abs(spend_amount)
+        spend_amount = Decimal("0.0")
+        missing_rates = []
+
+        # 3. Loop through each entry, convert currency, and sum up
+        for amount, commodity, entry_date in entries:
+            try:
+                converted = await self._convert_amount(amount, commodity, budget.currency, budget.end_date)
+                spend_amount += converted
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+
+        # If any exchange rates are missing, deduplicate them for the UI
+        if missing_rates:
+            from app.application.services.report_service import _deduplicate
+            missing_rates = _deduplicate(missing_rates)
+
+        # Expense entries represent negative outflows. Use max to gracefully handle net-positive refunds.
+        actual_spend = max(Decimal("0.0"), -spend_amount)
         difference = budget.amount - actual_spend
+        is_complete = len(missing_rates) == 0
 
         return {
             "id": budget.id,
             "budget_amount": budget.amount,
+            "currency": budget.currency,
             "spend_amount": actual_spend,
             "difference": difference,
             "start_date": budget.start_date,
-            "end_date": budget.end_date
+            "end_date": budget.end_date,
+            "is_complete": is_complete,
+            "missing_rates": missing_rates if missing_rates else None
         }
 
     async def list_for_journal(

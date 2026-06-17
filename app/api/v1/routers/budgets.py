@@ -2,7 +2,7 @@
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.budget import BudgetCreate, BudgetResponse
@@ -12,13 +12,16 @@ from app.domain.models.user import User
 from app.infrastructure.db.database import get_db
 from app.infrastructure.db.repositories.budget_repo import BudgetRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
+from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
+from app.domain.money import MissingExchangeRatesCollectedError
 
 router = APIRouter(prefix="/api/v1/budgets", tags=["Budgets"])
 
 def _make_budget_service(db: AsyncSession) -> BudgetService:
     return BudgetService(
         budget_repo=BudgetRepository(db),
-        journal_repo=JournalRepository(db)
+        journal_repo=JournalRepository(db),
+        market_price_repo=MarketPriceRepository(db)
     )
 
 @router.post(
@@ -41,6 +44,7 @@ async def create_budget(
         journal_id=journal_id,
         account_id=data.account_id,
         amount=data.amount,
+        currency=data.currency,
         period=data.period,
         start_date=data.start_date,
         end_date=data.end_date,

@@ -30,6 +30,7 @@ class BudgetRepository:
         journal_id: uuid.UUID,
         account_id: uuid.UUID,
         amount: Decimal,
+        currency: str,
         period: str,
         start_date: date_type,
         end_date: date_type ,
@@ -38,6 +39,7 @@ class BudgetRepository:
             journal_id=journal_id,
             account_id=account_id,
             amount=amount,
+            currency=currency,
             period=period,
             start_date=start_date,
             end_date=end_date,
@@ -80,16 +82,15 @@ class BudgetRepository:
         await self.db.commit()
         return (res.rowcount or 0) > 0
 
-    async def get_actual_amount(
+    async def get_spending_entries(
         self, account_id: uuid.UUID, start_date: date_type, end_date: date_type
-    ) -> Decimal:
-        """Calculate the sum of transaction entries for this account in the date range."""
-        from sqlalchemy import func
+    ) -> list[tuple[Decimal, str, date_type]]:
+        """Fetch all individual transaction entries for the budget's currency calculations."""
         from app.domain.models.transaction import Transaction
         from app.domain.models.transaction_entry import TransactionEntry
 
         stmt = (
-            select(func.sum(TransactionEntry.amount))
+            select(TransactionEntry.amount, TransactionEntry.commodity, Transaction.date)
             .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
             .where(
                 TransactionEntry.account_id == account_id,
@@ -98,4 +99,4 @@ class BudgetRepository:
             )
         )
         res = await self.db.execute(stmt)
-        return res.scalar() or Decimal("0.0")
+        return list(res.all())

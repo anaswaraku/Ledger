@@ -45,6 +45,11 @@ class Budget(UUIDMixin, TimestampMixin, Base):
         default="monthly",  # monthly, yearly, etc.
     )
 
+    currency: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+    )
+
     start_date: Mapped[date] = mapped_column(
         Date,
         nullable=False,
