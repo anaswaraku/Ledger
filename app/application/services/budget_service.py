@@ -140,7 +140,7 @@ class BudgetService:
             missing_rates = _deduplicate(missing_rates)
 
         # Expense entries represent negative outflows. Use max to gracefully handle net-positive refunds.
-        actual_spend = max(Decimal("0.0"), -spend_amount)
+        actual_spend = max(Decimal("0.0"), spend_amount)
         difference = budget.amount - actual_spend
         is_complete = len(missing_rates) == 0
 
