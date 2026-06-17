@@ -22,7 +22,7 @@ class ReportService:
         self,
         report_repo: ReportRepository,
         journal_repo: JournalRepository,
-        market_price_repo: MarketPriceRepository = None,
+        market_price_repo: MarketPriceRepository,
     ) -> None:
         self.report_repo = report_repo
         self.journal_repo = journal_repo
@@ -31,7 +31,7 @@ class ReportService:
     async def _convert_amount(
         self, amount: Decimal, from_currency: str, to_currency: str, as_of: date
     ) -> Decimal:
-        if not self.market_price_repo or from_currency.upper() == to_currency.upper():
+        if from_currency.upper() == to_currency.upper():
             return amount
         rate = await self.market_price_repo.get_rate(from_currency, to_currency, as_of)
         if rate is None:

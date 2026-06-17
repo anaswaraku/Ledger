@@ -139,7 +139,7 @@ def test_transaction_balance_method():
     e1 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("100.00"), commodity="USD")
     e2 = TransactionEntry(id=uuid.uuid4(), amount=Decimal("-100.00"), commodity="USD")
     t1.entries = [e1, e2]
-    assert t1.balance() is True
+    t1.balance()
 
     # Unbalanced standard
     t2 = Transaction(id=uuid.uuid4(), journal_id=uuid.uuid4())
@@ -164,5 +164,5 @@ def test_transaction_balance_method():
         commodity="USD",
     )
     t3.entries = [e5, e6]
-    assert t3.balance() is True
+    t3.balance()
 

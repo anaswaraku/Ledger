@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.file import CSVImportResponse
 from app.api.v1.schemas.journal import JournalResponse
-from app.application.services.file_service import FileService
+from app.application.services.file_service import FileService, JournalImportError
 from app.dependencies import get_current_user, get_file_service
 from app.domain.models.user import User
 
@@ -62,7 +62,13 @@ async def upload_file(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid text encoding in file.",
             )
-        journal = await service.import_journal_json(owner_id=current_user.id, json_content=json_str)
+        try:
+            journal = await service.import_journal_json(owner_id=current_user.id, json_content=json_str)
+        except JournalImportError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e),
+            )
         return journal  # type: ignore[return-value]
     
     else:

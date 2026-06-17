@@ -12,6 +12,7 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 
 from app.api.v1.schemas.file import CSVImportResponse, CSVImportRowError
+from app.domain.models.journal import Journal
 from app.domain.rules.double_entry import validate_double_entry, DoubleEntryError
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
@@ -19,6 +20,11 @@ from app.infrastructure.db.repositories.transaction_repo import TransactionRepos
 from app.infrastructure.external.csv_importer import ParsedRow, RowError, parse_csv, parse_double_entry_csv, parse_account_csv
 
 logger = logging.getLogger(__name__)
+
+
+class JournalImportError(ValueError):
+    """Exception raised when importing a journal backup fails."""
+    pass
 
 
 class FileService:
@@ -325,15 +331,15 @@ class FileService:
 
         return json.dumps(data, indent=2)
 
-    async def import_journal_json(self, owner_id: uuid.UUID, json_content: str):
+    async def import_journal_json(self, owner_id: uuid.UUID, json_content: str) -> Journal:
         """Import a journal backup from JSON content."""
         try:
             data = json.loads(json_content)
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON file format.")
+            raise JournalImportError("Invalid JSON file format.")
 
         if "journal" not in data or "name" not in data["journal"]:
-            raise HTTPException(status_code=400, detail="Missing journal name in JSON.")
+            raise JournalImportError("Missing journal name in JSON.")
 
         # Create new journal
         journal = await self.journal_repo.create(

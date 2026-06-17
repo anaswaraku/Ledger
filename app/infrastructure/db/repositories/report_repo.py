@@ -1,6 +1,7 @@
 # app/infrastructure/db/repositories/report_repo.py
 from datetime import date
 from decimal import Decimal
+from typing import NamedTuple
 from uuid import UUID
 import calendar
 import datetime
@@ -14,6 +15,35 @@ from app.domain.models.transaction import Transaction
 from app.domain.models.transaction_entry import TransactionEntry
 
 
+class AccountBalance(NamedTuple):
+    name: str
+    account_type: AccountType
+    commodity: str
+    balance: Decimal
+
+
+class CashBalance(NamedTuple):
+    commodity: str
+    balance: Decimal
+
+
+class CashMovement(NamedTuple):
+    name: str
+    commodity: str
+    movement: Decimal
+
+
+class NetWorthBalance(NamedTuple):
+    account_type: AccountType
+    commodity: str
+    balance: Decimal
+
+
+class MonthlyIncomeBalance(NamedTuple):
+    commodity: str
+    balance: Decimal
+
+
 class ReportRepository:
     """Data-access layer for financial reporting aggregations."""
 
@@ -22,10 +52,10 @@ class ReportRepository:
 
     async def get_account_balances(
         self, journal_id: UUID, date_to: date | None = None, date_from: date | None = None
-    ) -> list[tuple[str, AccountType, str, Decimal]]:
+    ) -> list[AccountBalance]:
         """
         Calculates the sum of all transaction entries for each account in a journal.
-        Returns a list of tuples: (account_name, account_type, commodity, balance).
+        Returns a list of AccountBalance named tuples.
         """
         query = (
             select(
@@ -48,9 +78,9 @@ class ReportRepository:
         query = query.group_by(Account.id, Account.name, Account.account_type, TransactionEntry.commodity)
 
         result = await self.db.execute(query)
-        return [(row.name, row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+        return [AccountBalance(row.name, row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
 
-    async def get_cash_balances(self, journal_id: UUID, as_of: date) -> list[tuple[str, Decimal]]:
+    async def get_cash_balances(self, journal_id: UUID, as_of: date) -> list[CashBalance]:
         """Return the cash balances grouped by commodity right before the given date."""
         query = (
             select(
@@ -67,13 +97,13 @@ class ReportRepository:
             .group_by(TransactionEntry.commodity)
         )
         result = await self.db.execute(query)
-        return [(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+        return [CashBalance(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
     
     async def get_cash_movements(
             self, journal_id: UUID,
             date_from: date,
             date_to: date,
-    ) -> list[tuple[str, str, Decimal]]:
+    ) -> list[CashMovement]:
         """Returns the net movement for each account and commodity during the period."""
         query = (
             select(
@@ -92,7 +122,7 @@ class ReportRepository:
             .group_by(Account.id, Account.name, TransactionEntry.commodity)
         )
         result = await self.db.execute(query)
-        return [(row.name, row.commodity, row.movement or Decimal("0.0")) for row in result.all()]
+        return [CashMovement(row.name, row.commodity, row.movement or Decimal("0.0")) for row in result.all()]
 
     async def get_investment_transactions_entries(
         self, journal_id: UUID, account_id: UUID | None = None, date_to: date | None = None
@@ -128,7 +158,7 @@ class ReportRepository:
         res = await self.db.execute(query)
         return [dict(row._mapping) for row in res.all()]
     
-    async def get_net_worth_balances(self, journal_id: UUID) -> list[tuple[AccountType, str, Decimal]]:
+    async def get_net_worth_balances(self, journal_id: UUID) -> list[NetWorthBalance]:
         """Return balances of Asset and Liability accounts, grouped by account_type and commodity."""
         query = (
             select(
@@ -143,9 +173,9 @@ class ReportRepository:
             .group_by(Account.account_type, TransactionEntry.commodity)
         )
         result = await self.db.execute(query)
-        return [(row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+        return [NetWorthBalance(row.account_type, row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
 
-    async def get_monthly_income_balances(self, journal_id: UUID) -> list[tuple[str, Decimal]]:
+    async def get_monthly_income_balances(self, journal_id: UUID) -> list[MonthlyIncomeBalance]:
         """Return balances of Income accounts for the current month, grouped by commodity."""
         query = (
             select(
@@ -163,4 +193,4 @@ class ReportRepository:
             .group_by(TransactionEntry.commodity)
         )
         result = await self.db.execute(query)
-        return [(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]
+        return [MonthlyIncomeBalance(row.commodity, row.balance or Decimal("0.0")) for row in result.all()]

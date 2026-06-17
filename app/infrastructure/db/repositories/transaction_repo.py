@@ -25,7 +25,9 @@ class TransactionRepository:
                 Transaction.id == txn_id,
                 Transaction.journal_id == journal_id,
             )
-            .options(selectinload(Transaction.entries))
+            .options(
+                selectinload(Transaction.entries).selectinload(TransactionEntry.account)
+            )
         )
         return result.scalar_one_or_none()
 
@@ -42,7 +44,9 @@ class TransactionRepository:
         query = (
             select(Transaction)
             .where(Transaction.journal_id == journal_id)
-            .options(selectinload(Transaction.entries))
+            .options(
+                selectinload(Transaction.entries).selectinload(TransactionEntry.account)
+            )
             .order_by(Transaction.date.desc(), Transaction.created_at.desc())
             .offset(skip)
             .limit(limit)
