@@ -477,16 +477,16 @@
         }
 
         let rows = data.assets.map(a => {
-            const isPositive = parseFloat(a.gain) >= 0;
+            const isPositive = parseFloat(a.gain) ;
             const colorClass = isPositive ? "text-green-600" : "text-red-600";
             return `
                 <tr class="hover:bg-gray-50">
                     <td class="py-3 px-4 text-sm font-medium text-gray-900">${a.account_name}</td>
-                    <td class="py-3 px-4 text-sm text-gray-500">${a.quantity.toFixed(4)} ${a.commodity}</td>
-                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${a.cost_basis.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${a.current_value.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${a.gain.toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${a.roi_percent.toFixed(2)}%</td>
+                    <td class="py-3 px-4 text-sm text-gray-500">${parseFloat(a.quantity).toFixed(4)} ${a.commodity}</td>
+                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${parseFloat(a.cost_basis).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${parseFloat(a.current_value).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${parseFloat(a.gain).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${parseFloat(a.roi_percent).toFixed(2)}%</td>
                 </tr>
             `;
         }).join("");
