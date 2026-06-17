@@ -204,7 +204,19 @@
 
     async function loadCurrencies() {
         try {
-            const currencies = await fetchJson(`/api/v1/currencies`);
+            // Provide a robust static list since there is no endpoint to fetch all possible global currencies
+            const currencies = [
+                {code: "USD", name: "US Dollar"},
+                {code: "INR", name: "Indian Rupee"},
+                {code: "EUR", name: "Euro"},
+                {code: "GBP", name: "British Pound"},
+                {code: "JPY", name: "Japanese Yen"},
+                {code: "CAD", name: "Canadian Dollar"},
+                {code: "AUD", name: "Australian Dollar"},
+                {code: "SGD", name: "Singapore Dollar"},
+                {code: "USDT", name: "Tether (Crypto)"},
+                {code: "BTC", name: "Bitcoin"}
+            ];
             const select = document.getElementById("budget-currency");
             select.innerHTML = currencies.map(c => `<option value="${c.code}">${c.code} - ${c.name}</option>`).join("");
         } catch (e) {
