@@ -182,6 +182,9 @@
                 else if (name === "cash-flow") {
                     renderCashFlow(data);
                 }
+                else if (name === "roi") {
+                    renderRoiReport(data);
+                }
                 else {
                     output.innerHTML =
                         "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
@@ -434,6 +437,90 @@
                 <strong class="text-lg font-mono">
                     ${journalBaseCurrency} ${parseFloat(data.ending_balance).toFixed(2)}
                 </strong>
+            </div>
+        `;
+    }
+
+    function renderRoiReport(data) {
+        const el = document.getElementById("report-output");
+
+        if (!data || !data.assets) {
+            el.innerHTML =
+                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
+                JSON.stringify(data, null, 2) +
+                "</pre>";
+            return;
+        }
+
+        let warningHtml = "";
+        if (data.is_complete === false && data.missing_rates && data.missing_rates.length > 0) {
+            warningHtml = `
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6 shadow-sm animate-pulse-once">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <h3 class="text-sm font-bold text-yellow-800">Partial Valuation (Missing Exchange Rates)</h3>
+                            <div class="mt-1 text-sm text-yellow-700">
+                                <p>Some assets are hidden because the following exchange rates to your base currency are missing:</p>
+                                <ul class="list-disc pl-5 mt-2 space-y-1">
+                                    ${data.missing_rates.map(r => `<li><strong>${r.from} &rarr; ${r.to}</strong> on ${r.date}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        let rows = data.assets.map(a => {
+            const isPositive = parseFloat(a.gain) >= 0;
+            const colorClass = isPositive ? "text-green-600" : "text-red-600";
+            return `
+                <tr class="hover:bg-gray-50">
+                    <td class="py-3 px-4 text-sm font-medium text-gray-900">${a.account_name}</td>
+                    <td class="py-3 px-4 text-sm text-gray-500">${a.quantity.toFixed(4)} ${a.commodity}</td>
+                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${a.cost_basis.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${a.current_value.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${a.gain.toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${isPositive ? '+' : ''}${a.roi_percent.toFixed(2)}%</td>
+                </tr>
+            `;
+        }).join("");
+
+        if (!rows) {
+            rows = "<tr><td colspan='6' class='py-8 px-4 text-sm text-gray-500 text-center italic'>No active investments found.</td></tr>";
+        }
+
+        el.innerHTML = `
+            <div class="mb-6 pb-4 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-900 tracking-tight">Return on Investment (ROI)</h3>
+                <p class="text-sm text-gray-500 mt-1">As of ${data.date}</p>
+            </div>
+            
+            ${warningHtml}
+
+            <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Account</th>
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Asset Holdings</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Basis</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Current Value</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Gain / Loss</th>
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">ROI %</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 bg-white">
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     }
