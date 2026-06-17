@@ -168,6 +168,11 @@
         fetchJson(url)
             .then(data => {
 
+                if (data && data.detail) {
+                    renderErrorBox(data.detail);
+                    return;
+                }
+
                 if (name === "balance-sheet") {
                     renderBalanceSheet(data);
                 }
@@ -189,6 +194,55 @@
                 output.innerHTML =
                     "<p class='text-red-600 text-sm'>Error loading report.</p>";
             });
+    }
+
+    function renderErrorBox(detail) {
+        const el = document.getElementById("report-output");
+        
+        let message = "An unknown error occurred.";
+        let missingRatesHtml = "";
+
+        if (typeof detail === "string") {
+            message = detail;
+        } else if (typeof detail === "object") {
+            message = detail.message || JSON.stringify(detail);
+            
+            if (detail.missing_rates && detail.missing_rates.length > 0) {
+                missingRatesHtml = `
+                    <div class="mt-4">
+                        <p class="text-sm font-medium text-red-800 mb-2">Please add the following exchange rates to generate this report:</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            ${detail.missing_rates.map(rate => 
+                                `<li class="text-sm text-red-700">
+                                    <strong>${rate.from} &rarr; ${rate.to}</strong> on ${rate.date} (blocks ${rate.transaction_count} transaction entries)
+                                </li>`
+                            ).join("")}
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        el.innerHTML = `
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-md my-4">
+                <div class="flex">
+                    <div class="flex-shrink-0 mt-0.5">
+                        <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800">
+                            Calculation Error
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700">
+                            <p>${message}</p>
+                        </div>
+                        ${missingRatesHtml}
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     function renderBalanceSheet(data) {

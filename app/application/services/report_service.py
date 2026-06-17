@@ -3,17 +3,25 @@ from datetime import date
 from uuid import UUID
 from decimal import Decimal
 import logging
-
-from fastapi import HTTPException
+from collections import defaultdict
 
 from app.api.v1.schemas.report import BalanceSheetResponse, IncomeStatementResponse, CashFlowStatementResponse
 from app.domain.models.account import AccountType
+from app.domain.money import MissingExchangeRateError, MissingExchangeRatesCollectedError
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.report_repo import ReportRepository
 from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
 
 logger = logging.getLogger(__name__)
 
+def _deduplicate(missing: list[dict]) -> list[dict]:
+    grouped: dict[tuple, int] = defaultdict(int)
+    for r in missing:
+        grouped[(r["from"], r["to"], r["date"])] += 1
+    return [
+        {"from": k[0], "to": k[1], "date": k[2], "transaction_count": v}
+        for k, v in grouped.items()
+    ]
 
 class ReportService:
     """Business logic for generating financial reports."""
@@ -33,49 +41,54 @@ class ReportService:
     ) -> Decimal:
         if from_currency.upper() == to_currency.upper():
             return amount
+        
         rate = await self.market_price_repo.get_rate(from_currency, to_currency, as_of)
+        
         if rate is None:
-            logger.warning(
-                f"Exchange rate from {from_currency} to {to_currency} not found on/before {as_of}. Using 1.0 rate fallback."
+            logger.error(
+                "Missing exchange rate: %s -> %s on %s for amount %s",
+                from_currency, to_currency, as_of, amount
             )
-            return amount
+            raise MissingExchangeRateError(from_currency, to_currency, as_of, amount)
+            
         return amount * rate
 
     async def generate_balance_sheet(
         self, owner_id: UUID, journal_id: UUID, as_of: date
     ) -> BalanceSheetResponse:
-        # 1. Verify journal ownership
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
+            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Journal not found.")
 
         base_currency = getattr(journal, "base_currency", "USD")
-
-        # 2. Get all balances up to the given date
         balances = await self.report_repo.get_account_balances(journal_id, date_to=as_of)
 
         assets = {}
         liabilities = {}
         equity = {}
+        missing_rates: list[dict] = []
 
-        # 3. Categorize, convert to base_currency, and flip signs for credit-normal accounts
         for name, acc_type, commodity, balance in balances:
             if balance == 0:
                 continue
 
-            converted_balance = await self._convert_amount(balance, commodity, base_currency, as_of)
+            try:
+                converted_balance = await self._convert_amount(balance, commodity, base_currency, as_of)
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
 
             if acc_type == AccountType.ASSET:
                 assets[name] = assets.get(name, Decimal("0.0")) + converted_balance
             elif acc_type == AccountType.LIABILITY:
-                # Liabilities are naturally negative (credits), flip to positive for display
                 liabilities[name] = liabilities.get(name, Decimal("0.0")) - converted_balance
             elif acc_type == AccountType.EQUITY:
-                # Equity is naturally negative (credits), flip to positive for display
                 equity[name] = equity.get(name, Decimal("0.0")) - converted_balance
 
-        # 4. Calculate Net Assets (Assets - Liabilities)
-        # We use the flipped positive values from our dicts for the calculation
+        if missing_rates:
+            raise MissingExchangeRatesCollectedError(missing_rates=_deduplicate(missing_rates))
+
         net_assets = sum(assets.values()) - sum(liabilities.values())
 
         return BalanceSheetResponse(
@@ -89,36 +102,38 @@ class ReportService:
     async def generate_income_statement(
         self, owner_id: UUID, journal_id: UUID, date_from: date, date_to: date
     ) -> IncomeStatementResponse:
-        # 1. Verify journal ownership
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
+            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Journal not found.")
 
         base_currency = getattr(journal, "base_currency", "USD")
-
-        # 2. Get balances for the specific period
         balances = await self.report_repo.get_account_balances(
             journal_id, date_to=date_to, date_from=date_from
         )
 
         income = {}
         expenses = {}
+        missing_rates: list[dict] = []
 
-        # 3. Categorize, convert to base_currency, and flip signs for credit-normal accounts
         for name, acc_type, commodity, balance in balances:
             if balance == 0:
                 continue
 
-            converted_balance = await self._convert_amount(balance, commodity, base_currency, date_to)
+            try:
+                converted_balance = await self._convert_amount(balance, commodity, base_currency, date_to)
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
 
             if acc_type == AccountType.INCOME:
-                # Income is naturally negative (credits), flip to positive for display
                 income[name] = income.get(name, Decimal("0.0")) - converted_balance
             elif acc_type == AccountType.EXPENSE:
                 expenses[name] = expenses.get(name, Decimal("0.0")) + converted_balance
 
-        # 4. Calculate Net Income (Income - Expenses)
-        # We use the flipped positive values
+        if missing_rates:
+            raise MissingExchangeRatesCollectedError(missing_rates=_deduplicate(missing_rates))
+
         total_income = sum(income.values())
         total_expenses = sum(expenses.values())
         net_income = total_income - total_expenses
@@ -136,21 +151,24 @@ class ReportService:
     async def generate_cash_flow(
         self, owner_id: UUID, journal_id: UUID, date_from: date, date_to: date
     ) -> CashFlowStatementResponse:
-        # verify journal
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
+            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Journal Not Found")
 
         base_currency = getattr(journal, "base_currency", "USD")
+        missing_rates: list[dict] = []
 
-        # get beginning cash balance
         beginning_balances = await self.report_repo.get_cash_balances(journal_id, date_from)
         beginning_balance = Decimal("0.0")
         for commodity, bal in beginning_balances:
-            converted = await self._convert_amount(bal, commodity, base_currency, date_from)
-            beginning_balance += converted
+            try:
+                converted = await self._convert_amount(bal, commodity, base_currency, date_from)
+                beginning_balance += converted
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
 
-        # get movements during the period
         movements = await self.report_repo.get_cash_movements(journal_id, date_from, date_to)
 
         inflows = {}
@@ -161,7 +179,11 @@ class ReportService:
             if movement == 0:
                 continue
 
-            converted_movement = await self._convert_amount(movement, commodity, base_currency, date_to)
+            try:
+                converted_movement = await self._convert_amount(movement, commodity, base_currency, date_to)
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
 
             if converted_movement > 0:
                 inflows[name] = inflows.get(name, Decimal("0.0")) + converted_movement
@@ -169,6 +191,9 @@ class ReportService:
                 outflows[name] = outflows.get(name, Decimal("0.0")) + abs(converted_movement)
 
             net_cash_flow += converted_movement
+
+        if missing_rates:
+            raise MissingExchangeRatesCollectedError(missing_rates=_deduplicate(missing_rates))
 
         ending_balance = beginning_balance + net_cash_flow
 
@@ -187,9 +212,9 @@ class ReportService:
         owner_id: UUID,
         journal_id: UUID,
     ):
-        # verify journal
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
+            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Journal Not Found")
 
         base_currency = getattr(journal, "base_currency", "USD")
@@ -197,14 +222,23 @@ class ReportService:
 
         assets = Decimal("0.0")
         liabilities = Decimal("0.0")
+        missing_rates: list[dict] = []
 
         today = date.today()
         for acc_type, commodity, bal in balances:
-            converted = await self._convert_amount(bal, commodity, base_currency, today)
+            try:
+                converted = await self._convert_amount(bal, commodity, base_currency, today)
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
+
             if acc_type == AccountType.ASSET:
                 assets += converted
             elif acc_type == AccountType.LIABILITY:
                 liabilities += converted
+
+        if missing_rates:
+            raise MissingExchangeRatesCollectedError(missing_rates=_deduplicate(missing_rates))
 
         net_worth = assets + liabilities
         from app.api.v1.schemas.report import NetWorthResponse
@@ -219,20 +253,27 @@ class ReportService:
         owner_id: UUID,
         journal_id: UUID,
     ):
-        # verify journal
         journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
         if not journal:
+            from fastapi import HTTPException
             raise HTTPException(status_code=404, detail="Journal Not Found")
 
         base_currency = getattr(journal, "base_currency", "USD")
         balances = await self.report_repo.get_monthly_income_balances(journal_id)
 
         monthly_income = Decimal("0.0")
+        missing_rates: list[dict] = []
         today = date.today()
         for commodity, bal in balances:
-            # Income is naturally negative in double entry (credit), flip to positive for display
-            converted = await self._convert_amount(bal, commodity, base_currency, today)
-            monthly_income -= converted
+            try:
+                converted = await self._convert_amount(bal, commodity, base_currency, today)
+                monthly_income -= converted
+            except MissingExchangeRateError as e:
+                missing_rates.append(e.to_dict())
+                continue
+
+        if missing_rates:
+            raise MissingExchangeRatesCollectedError(missing_rates=_deduplicate(missing_rates))
 
         from app.api.v1.schemas.report import MonthlyIncomeResponse
         return MonthlyIncomeResponse(

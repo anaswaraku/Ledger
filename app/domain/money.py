@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from decimal import Decimal 
+from decimal import Decimal
+from datetime import date
 
 class CurrencyMismatchError(ValueError):
     def __init__(self, cur1:str,cur2:str):
@@ -9,6 +10,27 @@ class CurrencyMismatchError(ValueError):
 
 class UnbalancedTransactionError(ValueError):
     pass
+
+class MissingExchangeRateError(ValueError):
+    def __init__(self, from_currency: str, to_currency: str, as_of: date, amount: Decimal) -> None:
+        self.from_currency = from_currency
+        self.to_currency = to_currency
+        self.as_of = as_of
+        self.amount = amount
+        super().__init__(f"Missing exchange rate: {from_currency} -> {to_currency} on {as_of}")
+
+    def to_dict(self) -> dict:
+        return {
+            "from": self.from_currency,
+            "to": self.to_currency,
+            "date": str(self.as_of),
+        }
+
+class MissingExchangeRatesCollectedError(ValueError):
+    """Raised by report service when one or more exchange rates are missing."""
+    def __init__(self, missing_rates: list[dict]) -> None:
+        self.missing_rates = missing_rates
+        super().__init__(f"{len(missing_rates)} exchange rate(s) missing")
 
 @dataclass(frozen=True)
 class Money:
