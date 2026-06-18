@@ -45,7 +45,7 @@ app.add_middleware(
 
 #  Routers ─
 
-from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies, budgets
+from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies, budgets, plot
 
 app.include_router(auth.router)
 app.include_router(journals.router)
@@ -55,6 +55,7 @@ app.include_router(reports.router)
 app.include_router(files.router)
 app.include_router(currencies.router) 
 app.include_router(budgets.router)
+app.include_router(plot.router)
 
 #  Root endpoints 
 

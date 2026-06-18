@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -22,6 +23,59 @@
     </script>
 </head>
 
+<style>
+    .headings {
+        display: block;
+        padding-left: 1rem;
+        /* px-4 */
+        padding-right: 1rem;
+        padding-top: 0.5rem;
+        /* py-2 */
+        padding-bottom: 0.5rem;
+        font-weight: 500;
+        /* font-medium */
+        color: #374151;
+        /* text-gray-700 */
+        /*border-radius: 0.375rem;  rounded-md */
+        background-color: #f3f4f6;
+        /* bg-gray-100 */
+        transition: color 0.15s ease-in-out;
+        /* default transition-colors */
+        font-size: medium;
+        text-transform: uppercase;
+    }
+
+    .headings:hover {
+        color: #374151;
+        /* hover:text-gray-700 */
+    }
+
+    .elements {
+        display: block;
+        font-size: larger;
+        padding-left: 1rem;
+        /* px-4 */
+        padding-right: 1rem;
+        padding-top: 0.5rem;
+        /* py-2 */
+        padding-bottom: 0.5rem;
+        font-weight: 500;
+        /* font-medium */
+        color: #374151;
+        /* text-gray-700 */
+        border-radius: 0.375rem;
+        /* rounded-md */
+        transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    }
+
+    .elements:hover {
+        background-color: #f3f4f6;
+        /* hover:bg-gray-100 */
+        color: #111827;
+        /* hover:text-gray-900 */
+    }
+</style>
+
 <body class="bg-gray-50 text-gray-800 font-sans antialiased flex h-screen overflow-hidden">
 
     {% if not auth_page %}
@@ -30,63 +84,51 @@
         <div class="h-16 flex items-center px-6 border-b border-gray-200">
             <strong class="text-xl font-bold tracking-tight text-gray-900"><a href="/dashboard">Ledger</a></strong>
         </div>
-        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-            <select name="journal-list" id="my-journal"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">
+        <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto ">
+            <select name="journal-list" id="my-journal" class="elements uppercase">
                 <option value="">Loading...</option>
             </select>
             <!--Overview-->
-            <p
-                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md bg-gray-100 hover:text-gray-700 transition-colors">
+            <p class="headings">
                 Overview</p>
-            <a href="/accounts" 
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Accounts</a>
+            <a href="/accounts" class="elements">Accounts</a>
 
-            <a href="/transactions"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Transactions</a>
-            <a href="/budget"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">budget</a>
+            <a href="/transactions" class="elements">Transactions</a>
+
             <!--Reports-->
-            <p
-                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md bg-gray-100 hover:text-gray-700 transition-colors">
+            <p class="headings">
                 Reports</p>
-            <a href="/reports/balance-sheet"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Balance
+            <a href="/reports/balance-sheet" class="elements">Balance
                 Sheet</a>
-            <a href="/reports/income-statement"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Income
+            <a href="/reports/income-statement" class="elements">Income
                 Statement</a>
-            <a href="/reports/cash-flow" 
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Cashflow</a>
-            <a href="/reports/roi"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Return on Investment (ROI)</a>
+            <a href="/reports/cash-flow" class="elements">Cashflow</a>
+            <a href="/reports/roi" class="elements">Return on Investment (ROI)</a>
+
+            <!--PLANNING-->
+            <p class="headings">
+                Planning</p>
+            <a href="/budget" class="elements">budget</a>
             <!--Currencies-->
-            <p
-                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md bg-gray-100 hover:text-gray-700 transition-colors">
+            <p class="headings">
                 Settings</p>
-            <a href="/currencies"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Currencies</a>
+            <a href="/currencies" class="elements">Currencies</a>
             <!--Upload-->
-            <p
-                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md bg-gray-100 hover:text-gray-700 transition-colors">
+            <p class="headings">
                 Upload Entries</p>
-            <a href="/accounts/import"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Upload
+            <a href="/accounts/import" class="elements">Upload
                 Accounts</a>
-            <a href="/transactions/import"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Upload
+            <a href="/transactions/import" class="elements">Upload
                 Transaction</a>
 
             <!--Export-->
-            <p
-                class="block px-4 py-2 text-xs font-medium text-gray-700 rounded-md bg-gray-100 hover:text-gray-700 transition-colors">
+            <p class="headings">
                 Export Data</p>
-            <a href="#" onclick="exportData('accounts', 'csv')"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Export
+            <a href="#" onclick="exportData('accounts', 'csv')" class="elements">Export
                 Accounts</a>
-            <a href="#" onclick="exportData('transactions', 'csv')"
-                class="block px-4 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100 hover:text-gray-900 transition-colors">Export
+            <a href="#" onclick="exportData('transactions', 'csv')" class="elements">Export
                 Transactions</a>
+
 
         </nav>
         <div class="p-4 border-t border-gray-200">
@@ -98,23 +140,47 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col h-full overflow-hidden">
         <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 shrink-0">
+
             <div class="flex items-center space-x-2">
-                <input type="text" id="filter-payee" placeholder="Search Transaction..." class="w-32 sm:w-48 rounded-full border border-gray-300 px-4 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand bg-gray-50">
-                <button onclick="executeGlobalSearch()" class="p-1.5 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none" title="Search">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                <input type="text" id="filter-payee" placeholder="Search Transaction..."
+                    class="w-32 sm:w-48 rounded-full border border-gray-300 px-4 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand bg-gray-50">
+                <button onclick="executeGlobalSearch()"
+                    class="p-1.5 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none"
+                    title="Search">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                 </button>
             </div>
             <div class="flex items-center">
-                <button hx-get="/journals" hx-target="body"
-                    class="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors focus:outline-none"
-                    title="Add New Journal">
+                <button onclick="toggleMenu()"
+                    class="p-2 rounded-full text-blue-500 hover:bg-blue-100 hover:text-blue-900 transition-colors focus:outline-none flex items-center"
+                    title="Export" >
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
                         xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
+                    Export
                 </button>
+                
+                <div id="exportmenu"
+                class="hidden absolute right-0 mt-10 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <button class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Accounts</button>
+                <button class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Transactions</button>
+                </div>
+                <button hx-get="/journals" hx-target="body"
+                    class="p-2 rounded-full text-blue-500 hover:bg-blue-100 hover:text-blue-900 transition-colors focus:outline-none flex items-center"
+                    title="Add New Journal" >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    New Journal
+                </button>
+
+               
             </div>{% endif %}
         </header>
 
@@ -139,6 +205,10 @@
             window.location.href = "/";
         }
 
+        function toggleMenu(){
+            const menu = document.getElementById("exportmenu");
+            menu.classList.toggle("hidden");
+        }
         // Global HTMX error handler
         document.body.addEventListener("htmx:responseError", function (e) {
             const status = e.detail.xhr.status;
@@ -211,38 +281,38 @@
                 window.location.href = "/auth/login";
                 return;
             }
-            
+
             fetch(`/api/v1/files/export?journal_id=${journalId}&format=${format}&entity=${entity}`, {
                 headers: {
                     'Authorization': 'Bearer ' + token
                 }
             })
-            .then(res => {
-                if (!res.ok) throw new Error("Failed to export data");
-                
-                let filename = `${entity}_export.${format}`;
-                const disposition = res.headers.get('Content-Disposition');
-                if (disposition && disposition.indexOf('filename=') !== -1) {
-                    const matches = /filename="([^"]+)"/.exec(disposition);
-                    if (matches != null && matches[1]) filename = matches[1];
-                }
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed to export data");
 
-                return res.blob().then(blob => ({ blob, filename }));
-            })
-            .then(({blob, filename}) => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Export failed: " + err.message);
-            });
+                    let filename = `${entity}_export.${format}`;
+                    const disposition = res.headers.get('Content-Disposition');
+                    if (disposition && disposition.indexOf('filename=') !== -1) {
+                        const matches = /filename="([^"]+)"/.exec(disposition);
+                        if (matches != null && matches[1]) filename = matches[1];
+                    }
+
+                    return res.blob().then(blob => ({ blob, filename }));
+                })
+                .then(({ blob, filename }) => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Export failed: " + err.message);
+                });
         }
 
         function executeGlobalSearch() {
@@ -262,7 +332,7 @@
                 const searchInput = document.getElementById('filter-payee');
                 if (searchInput) searchInput.value = payee;
             }
-            
+
             // Allow pressing Enter to search
             const searchInput = document.getElementById('filter-payee');
             if (searchInput) {

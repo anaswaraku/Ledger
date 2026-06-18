@@ -1,4 +1,5 @@
 # app/infrastructure/db/repositories/account_repo.py
+#add queries to execute
 import uuid
 
 from sqlalchemy import select
@@ -68,3 +69,4 @@ class AccountRepository:
             .limit(limit)
         )
         return list(result.scalars().all())
+
