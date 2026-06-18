@@ -232,3 +232,60 @@ class ReportRepository:
         )
         result = await self.db.execute(query)
         return [ROIBalance(row.name, row.commodity, row.quantity or Decimal("0.0"), row.cost_amount or Decimal("0.0"), row.cost_commodity) for row in result.all()]
+
+    async def get_roi_monthly_timeline(
+        self,
+        journal_id: UUID,
+        commodity: str,
+        cost_commodity: str,
+    ) -> list[dict]:
+        """
+        Return month-by-month cumulative cost basis and net quantity
+        for entries matching a specific commodity/cost_commodity pair.
+        Each row: { month: date (first of month), cum_cost: Decimal, cum_qty: Decimal }
+        """
+        from sqlalchemy import extract, cast
+        from sqlalchemy.dialects.postgresql import INTERVAL
+        from sqlalchemy import text
+
+        cost_basis_expr = case(
+            (TransactionEntry.amount < 0, -func.abs(TransactionEntry.cost_amount)),
+            else_=func.abs(TransactionEntry.cost_amount),
+        )
+
+        month_trunc = func.date_trunc("month", Transaction.date)
+
+        query = (
+            select(
+                month_trunc.label("month"),
+                func.sum(cost_basis_expr).label("cost_in_month"),
+                func.sum(TransactionEntry.amount).label("qty_in_month"),
+            )
+            .select_from(Account)
+            .join(TransactionEntry, Account.id == TransactionEntry.account_id)
+            .join(Transaction, TransactionEntry.transaction_id == Transaction.id)
+            .where(Account.journal_id == journal_id)
+            .where(Account.account_type == AccountType.ASSET)
+            .where(TransactionEntry.commodity == commodity)
+            .where(TransactionEntry.cost_commodity == cost_commodity)
+            .where(TransactionEntry.cost_amount.isnot(None))
+            .group_by(month_trunc)
+            .order_by(month_trunc.asc())
+        )
+
+        result = await self.db.execute(query)
+        rows = result.all()
+
+        # Build cumulative series
+        timeline = []
+        cum_cost = Decimal("0.0")
+        cum_qty  = Decimal("0.0")
+        for row in rows:
+            cum_cost += row.cost_in_month or Decimal("0.0")
+            cum_qty  += row.qty_in_month  or Decimal("0.0")
+            timeline.append({
+                "month":    row.month.date().isoformat() if hasattr(row.month, "date") else str(row.month)[:10],
+                "cum_cost": float(cum_cost),
+                "cum_qty":  float(cum_qty),
+            })
+        return timeline

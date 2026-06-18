@@ -38,6 +38,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
 <script>
     let selectedJournalId = null;
     let journalBaseCurrency = "USD";
@@ -46,7 +47,6 @@
 
     function fetchJson(url, opts = {}) {
         const token = localStorage.getItem("access_token");
-
         return fetch(url, {
             ...opts,
             headers: {
@@ -64,32 +64,18 @@
     }
 
     document.addEventListener("DOMContentLoaded", async () => {
-
         const jid = localStorage.getItem("selectedJournalId");
 
         if (!jid) {
             const warning = document.createElement("div");
-
-            warning.className =
-                "bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 text-center text-sm text-gray-500";
-
-            warning.textContent =
-                "Please select a journal from the sidebar.";
-
-            document
-                .getElementById("reports-section")
-                .parentNode
-                .insertBefore(
-                    warning,
-                    document.getElementById("reports-section")
-                );
-
+            warning.className = "bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8 text-center text-sm text-gray-500";
+            warning.textContent = "Please select a journal from the sidebar.";
+            document.getElementById("reports-section").parentNode.insertBefore(warning, document.getElementById("reports-section"));
             return;
         }
 
         selectedJournalId = jid;
 
-        // Fetch journal base currency
         try {
             const journal = await fetchJson(`/api/v1/journals/${jid}`);
             if (journal && journal.base_currency) {
@@ -98,110 +84,61 @@
         } catch (err) {
             console.error("Error fetching journal base currency", err);
         }
- 
+
         document.getElementById("reports-section").style.display = "block";
 
-        const isPeriod =
-            currentReport === "income-statement" ||
-            currentReport === "cash-flow";
-
-        document.getElementById("date-range").style.display =
-            isPeriod ? "block" : "none";
+        const isPeriod = currentReport === "income-statement" || currentReport === "cash-flow";
+        document.getElementById("date-range").style.display = isPeriod ? "block" : "none";
 
         if (isPeriod) {
             const today = new Date();
-
-            const firstDay = new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                1
-            );
-
-            const formatDateLocal = (date) => {
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const d = String(date.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const fmt = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${dd}`;
             };
-
-            document.getElementById("report-from").value = formatDateLocal(firstDay);
-            document.getElementById("report-to").value = formatDateLocal(today);
+            document.getElementById("report-from").value = fmt(firstDay);
+            document.getElementById("report-to").value = fmt(today);
         }
 
         loadReport(currentReport);
     });
 
     function loadReport(name) {
-
         const output = document.getElementById("report-output");
+        output.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
 
-        output.innerHTML =
-            '<div class="flex items-center justify-center py-8">' +
-            '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>' +
-            '</div>';
-
-        const isPeriod =
-            name === "income-statement" ||
-            name === "cash-flow";
-
-        let url =
-            `/api/v1/reports/${name}` +
-            `?journal_id=${selectedJournalId}`;
+        const isPeriod = name === "income-statement" || name === "cash-flow";
+        let url = `/api/v1/reports/${name}?journal_id=${selectedJournalId}`;
 
         if (isPeriod) {
-
-            const from =
-                document.getElementById("report-from").value;
-
-            const to =
-                document.getElementById("report-to").value;
-
+            const from = document.getElementById("report-from").value;
+            const to = document.getElementById("report-to").value;
             if (!from || !to) {
-                output.innerHTML =
-                    "<p class='text-red-600 text-sm'>Please select a date range.</p>";
+                output.innerHTML = "<p class='text-red-600 text-sm'>Please select a date range.</p>";
                 return;
             }
-
             url += `&date_from=${from}&date_to=${to}`;
         }
 
         fetchJson(url)
             .then(data => {
-
-                if (data && data.detail) {
-                    renderErrorBox(data.detail);
-                    return;
-                }
-
-                if (name === "balance-sheet") {
-                    renderBalanceSheet(data);
-                }
-                else if (name === "income-statement") {
-                    renderIncomeStatement(data);
-                }
-                else if (name === "cash-flow") {
-                    renderCashFlow(data);
-                }
-                else if (name === "roi") {
-                    renderRoiReport(data);
-                }
-                else {
-                    output.innerHTML =
-                        "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
-                        JSON.stringify(data, null, 2) +
-                        "</pre>";
-                }
-
+                if (data && data.detail) { renderErrorBox(data.detail); return; }
+                if (name === "balance-sheet")      renderBalanceSheet(data);
+                else if (name === "income-statement") renderIncomeStatement(data);
+                else if (name === "cash-flow")     renderCashFlow(data);
+                else if (name === "roi")           renderRoiReport(data);
+                else output.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             })
             .catch(() => {
-                output.innerHTML =
-                    "<p class='text-red-600 text-sm'>Error loading report.</p>";
+                output.innerHTML = "<p class='text-red-600 text-sm'>Error loading report.</p>";
             });
     }
 
     function renderErrorBox(detail) {
         const el = document.getElementById("report-output");
-        
         let message = "An unknown error occurred.";
         let missingRatesHtml = "";
 
@@ -209,20 +146,16 @@
             message = detail;
         } else if (typeof detail === "object") {
             message = detail.message || JSON.stringify(detail);
-            
             if (detail.missing_rates && detail.missing_rates.length > 0) {
                 missingRatesHtml = `
                     <div class="mt-4">
                         <p class="text-sm font-medium text-red-800 mb-2">Please add the following exchange rates to generate this report:</p>
                         <ul class="list-disc pl-5 space-y-1">
-                            ${detail.missing_rates.map(rate => 
-                                `<li class="text-sm text-red-700">
-                                    <strong>${rate.from} &rarr; ${rate.to}</strong> on ${rate.date} (blocks ${rate.transaction_count} transaction entries)
-                                </li>`
+                            ${detail.missing_rates.map(rate =>
+                                `<li class="text-sm text-red-700"><strong>${rate.from} &rarr; ${rate.to}</strong> on ${rate.date} (blocks ${rate.transaction_count} transaction entries)</li>`
                             ).join("")}
                         </ul>
-                    </div>
-                `;
+                    </div>`;
             }
         }
 
@@ -235,227 +168,132 @@
                         </svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-medium text-red-800">
-                            Calculation Error
-                        </h3>
-                        <div class="mt-2 text-sm text-red-700">
-                            <p>${message}</p>
-                        </div>
+                        <h3 class="text-sm font-medium text-red-800">Calculation Error</h3>
+                        <div class="mt-2 text-sm text-red-700"><p>${message}</p></div>
                         ${missingRatesHtml}
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function renderBalanceSheet(data) {
         const el = document.getElementById("report-output");
-
         if (!data || !data.assets) {
-            el.innerHTML =
-                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
-                JSON.stringify(data, null, 2) +
-                "</pre>";
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
-
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900">
-                    Balance Sheet
-                </h3>
-                <p class="text-sm text-gray-500">
-                    As of ${data.date}
-                </p>
+                <h3 class="text-xl font-bold text-gray-900">Balance Sheet</h3>
+                <p class="text-sm text-gray-500">As of ${data.date}</p>
             </div>
-
             <div class="space-y-8">
                 ${renderDictSection("Assets", data.assets)}
                 ${renderDictSection("Liabilities", data.liabilities)}
                 ${renderDictSection("Equity", data.equity)}
             </div>
-
             <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
-                <strong class="text-lg text-gray-900">
-                    Net Assets
-                </strong>
-
-                <strong class="text-lg text-gray-900 font-mono">
-                    ${journalBaseCurrency} ${parseFloat(data.net).toFixed(2)}
-                </strong>
-            </div>
-        `;
+                <strong class="text-lg text-gray-900">Net Assets</strong>
+                <strong class="text-lg text-gray-900 font-mono">${journalBaseCurrency} ${parseFloat(data.net).toFixed(2)}</strong>
+            </div>`;
     }
 
     function renderDictSection(title, dictData) {
-
         let rows = "";
         let total = 0;
-
         for (const [name, balance] of Object.entries(dictData)) {
-
             const val = parseFloat(balance);
-
-            rows += `
-                <tr class="hover:bg-gray-50">
-                    <td class="py-2 pl-4 text-sm text-gray-700">
-                        ${name}
-                    </td>
-
-                    <td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">
-                        ${journalBaseCurrency} ${val.toFixed(2)}
-                    </td>
-                </tr>
-            `;
-
+            rows += `<tr class="hover:bg-gray-50">
+                <td class="py-2 pl-4 text-sm text-gray-700">${name}</td>
+                <td class="py-2 pr-4 text-sm text-gray-900 font-mono text-right">${journalBaseCurrency} ${val.toFixed(2)}</td>
+            </tr>`;
             total += val;
         }
-
-        if (!rows) {
-            rows =
-                "<tr><td colspan='2' class='py-2 px-4 text-sm text-gray-500 italic'>None</td></tr>";
-        }
-
+        if (!rows) rows = "<tr><td colspan='2' class='py-2 px-4 text-sm text-gray-500 italic'>None</td></tr>";
         return `
             <div>
-                <h4 class="text-md font-semibold text-gray-800 mb-2">
-                    ${title}
-                </h4>
-
+                <h4 class="text-md font-semibold text-gray-800 mb-2">${title}</h4>
                 <div class="bg-white border border-gray-200 rounded-md overflow-hidden">
                     <table class="min-w-full divide-y divide-gray-200">
-
-                        <tbody class="divide-y divide-gray-200">
-                            ${rows}
-                        </tbody>
-
+                        <tbody class="divide-y divide-gray-200">${rows}</tbody>
                         <tfoot class="bg-gray-50 border-t border-gray-200">
                             <tr>
-                                <td class="py-3 pl-4 text-sm font-medium text-gray-900">
-                                    Total ${title}
-                                </td>
-
-                                <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">
-                                    ${journalBaseCurrency} ${total.toFixed(2)}
-                                </td>
+                                <td class="py-3 pl-4 text-sm font-medium text-gray-900">Total ${title}</td>
+                                <td class="py-3 pr-4 text-sm font-bold text-gray-900 font-mono text-right">${journalBaseCurrency} ${total.toFixed(2)}</td>
                             </tr>
                         </tfoot>
-
                     </table>
                 </div>
-            </div>
-        `;
+            </div>`;
     }
 
     function renderIncomeStatement(data) {
         const el = document.getElementById("report-output");
-
         if (!data || !data.income) {
-            el.innerHTML =
-                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
-                JSON.stringify(data, null, 2) +
-                "</pre>";
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
-
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900">
-                    Income Statement
-                </h3>
-
-                <p class="text-sm text-gray-500">
-                    Period: ${data.date_from} to ${data.date_to}
-                </p>
+                <h3 class="text-xl font-bold text-gray-900">Income Statement</h3>
+                <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
             </div>
-
             <div class="space-y-8">
                 ${renderDictSection("Income", data.income)}
                 ${renderDictSection("Expenses", data.expenses)}
             </div>
-
             <div class="mt-8 pt-4 border-t-2 border-gray-900 flex justify-between items-center">
-                <strong class="text-lg text-gray-900">
-                    Net Income
-                </strong>
-
+                <strong class="text-lg text-gray-900">Net Income</strong>
                 <strong class="text-lg text-gray-900 font-mono ${parseFloat(data.net_income) < 0 ? 'text-red-600' : 'text-green-600'}">
                     ${journalBaseCurrency} ${parseFloat(data.net_income).toFixed(2)}
                 </strong>
-            </div>
-        `;
+            </div>`;
     }
 
     function renderCashFlow(data) {
-
         const el = document.getElementById("report-output");
-
         if (!data || data.beginning_balance === undefined) {
-
-            el.innerHTML =
-                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
-                JSON.stringify(data, null, 2) +
-                "</pre>";
-
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
-
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-gray-900">
-                    Cash Flow Statement
-                </h3>
-
-                <p class="text-sm text-gray-500">
-                    Period: ${data.date_from} to ${data.date_to}
-                </p>
+                <h3 class="text-xl font-bold text-gray-900">Cash Flow Statement</h3>
+                <p class="text-sm text-gray-500">Period: ${data.date_from} to ${data.date_to}</p>
             </div>
-
             <div class="flex justify-between items-center mb-6 px-4 py-3 bg-gray-50 rounded-md border border-gray-200">
                 <strong>Beginning Cash Balance</strong>
                 <strong>${journalBaseCurrency} ${parseFloat(data.beginning_balance).toFixed(2)}</strong>
             </div>
-
             <div class="space-y-8 mb-6">
                 ${renderDictSection("Cash Inflows", data.inflows)}
                 ${renderDictSection("Cash Outflows", data.outflows)}
             </div>
-
             <div class="flex justify-between items-center mb-6 px-4 py-3 border-b border-gray-200">
                 <strong>Net Cash Flow</strong>
-
                 <strong class="${parseFloat(data.net_cash_flow) < 0 ? 'text-red-600' : 'text-green-600'}">
                     ${journalBaseCurrency} ${parseFloat(data.net_cash_flow).toFixed(2)}
                 </strong>
             </div>
-
             <div class="flex justify-between items-center pt-2">
-                <strong class="text-lg">
-                    Ending Cash Balance
-                </strong>
-
-                <strong class="text-lg font-mono">
-                    ${journalBaseCurrency} ${parseFloat(data.ending_balance).toFixed(2)}
-                </strong>
-            </div>
-        `;
+                <strong class="text-lg">Ending Cash Balance</strong>
+                <strong class="text-lg font-mono">${journalBaseCurrency} ${parseFloat(data.ending_balance).toFixed(2)}</strong>
+            </div>`;
     }
 
     function renderRoiReport(data) {
         const el = document.getElementById("report-output");
 
         if (!data || !data.assets) {
-            el.innerHTML =
-                "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" +
-                JSON.stringify(data, null, 2) +
-                "</pre>";
+            el.innerHTML = "<pre class='bg-gray-100 p-4 rounded text-sm overflow-x-auto'>" + JSON.stringify(data, null, 2) + "</pre>";
             return;
         }
 
+        // ── Missing rates warning ──────────────────────────────────────────
         let warningHtml = "";
         if (data.is_complete === false && data.missing_rates && data.missing_rates.length > 0) {
             warningHtml = `
-                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6 shadow-sm animate-pulse-once">
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md mb-6 shadow-sm">
                     <div class="flex items-start">
                         <div class="flex-shrink-0">
                             <svg class="h-5 w-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
@@ -472,63 +310,277 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
+                </div>`;
         }
 
+        // ── Table rows ─────────────────────────────────────────────────────
         let rows = data.assets.map(a => {
             const gainVal = parseFloat(a.gain);
-            const roiVal = parseFloat(a.roi_percent);
-            const isPositive = gainVal >= 0;
-            const colorClass = isPositive ? "text-green-600" : "text-red-600";
-            const sign = isPositive ? '+' : '-';
-            
+            const roiVal  = parseFloat(a.roi_percent);
+            const isPos   = gainVal >= 0;
+            const cls     = isPos ? "text-green-600" : "text-red-600";
+            const sign    = isPos ? '+' : '-';
             return `
                 <tr class="hover:bg-gray-50">
                     <td class="py-3 px-4 text-sm font-medium text-gray-900">${a.account_name}</td>
                     <td class="py-3 px-4 text-sm text-gray-500">${parseFloat(a.quantity).toFixed(4)} ${a.commodity}</td>
                     <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${parseFloat(a.cost_basis).toFixed(2)}</td>
                     <td class="py-3 px-4 text-sm text-gray-900 font-mono text-right">${a.cost_commodity} ${parseFloat(a.current_value).toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${sign}${Math.abs(gainVal).toFixed(2)}</td>
-                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${colorClass}">${sign}${Math.abs(roiVal).toFixed(2)}%</td>
-                </tr>
-            `;
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${cls}">${sign}${Math.abs(gainVal).toFixed(2)}</td>
+                    <td class="py-3 px-4 text-sm font-mono text-right font-bold ${cls}">${sign}${Math.abs(roiVal).toFixed(2)}%</td>
+                </tr>`;
         }).join("");
 
         if (!rows) {
             rows = "<tr><td colspan='6' class='py-8 px-4 text-sm text-gray-500 text-center italic'>No active investments found.</td></tr>";
         }
 
+        // ── Chart containers (only when there is data) ─────────────────────
+        const chartsHtml = data.assets.length > 0 ? `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Cost Basis vs Current Value</h4>
+                    <div id="roi-value-chart" style="height:300px;"></div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                    <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">ROI % by Account</h4>
+                    <div id="roi-pct-chart" style="height:300px;"></div>
+                </div>
+            </div>` : '';
+
         el.innerHTML = `
             <div class="mb-6 pb-4 border-b border-gray-200">
                 <h3 class="text-xl font-bold text-gray-900 tracking-tight">Return on Investment (ROI)</h3>
                 <p class="text-sm text-gray-500 mt-1">As of ${data.date}</p>
             </div>
-            
+
             ${warningHtml}
+            ${chartsHtml}
 
             <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Account</th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Asset Holdings</th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Basis</th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Current Value</th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Gain / Loss</th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">ROI %</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Account</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Asset Holdings</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Cost Basis</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Current Value</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Gain / Loss</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">ROI %</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200 bg-white">
-                            ${rows}
-                        </tbody>
+                        <tbody class="divide-y divide-gray-200 bg-white">${rows}</tbody>
                     </table>
                 </div>
-            </div>
-        `;
+            </div>`;
+
+        // ── Plotly charts (called after innerHTML is set so divs exist) ────
+        if (data.assets.length > 0) {
+            const names     = data.assets.map(a => a.account_name);
+            const costBasis = data.assets.map(a => parseFloat(a.cost_basis));
+            const curValues = data.assets.map(a => parseFloat(a.current_value));
+            const roiPcts   = data.assets.map(a => parseFloat(a.roi_percent));
+
+            // Chart 1 — Cost Basis vs Current Value (grouped bar)
+            Plotly.newPlot('roi-value-chart', [
+                {
+                    type: 'bar', name: 'Cost Basis',
+                    x: names, y: costBasis,
+                    marker: { color: '#6366f1', opacity: 0.85 },
+                    hovertemplate: '<b>%{x}</b><br>Cost Basis: %{y:,.2f}<extra></extra>',
+                },
+                {
+                    type: 'bar', name: 'Current Value',
+                    x: names, y: curValues,
+                    marker: { color: '#10b981', opacity: 0.85 },
+                    hovertemplate: '<b>%{x}</b><br>Current Value: %{y:,.2f}<extra></extra>',
+                }
+            ], {
+                barmode: 'group',
+                margin: { t: 10, r: 10, b: 80, l: 60 },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
+                xaxis: { tickangle: -30, automargin: true, gridcolor: '#f3f4f6', linecolor: '#e5e7eb' },
+                yaxis: { title: journalBaseCurrency, gridcolor: '#f3f4f6', linecolor: '#e5e7eb' },
+                legend: { orientation: 'h', y: -0.25 },
+                bargap: 0.25,
+            }, { responsive: true, displayModeBar: false });
+
+            // Chart 2 — ROI % per account (green = gain, red = loss)
+            Plotly.newPlot('roi-pct-chart', [{
+                type: 'bar',
+                x: names, y: roiPcts,
+                marker: {
+                    color: roiPcts.map(v => v >= 0 ? '#10b981' : '#ef4444'),
+                    opacity: 0.88,
+                },
+                hovertemplate: '<b>%{x}</b><br>ROI: %{y:+.2f}%<extra></extra>',
+                text: roiPcts.map(v => (v >= 0 ? '+' : '') + v.toFixed(1) + '%'),
+                textposition: 'outside',
+                textfont: { size: 11 },
+            }], {
+                margin: { t: 30, r: 10, b: 80, l: 50 },
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
+                xaxis: { tickangle: -30, automargin: true, gridcolor: '#f3f4f6', linecolor: '#e5e7eb' },
+                yaxis: {
+                    title: 'ROI %',
+                    gridcolor: '#f3f4f6', linecolor: '#e5e7eb',
+                    zeroline: true, zerolinecolor: '#9ca3af', zerolinewidth: 1.5,
+                },
+                bargap: 0.35,
+            }, { responsive: true, displayModeBar: false });
+
+            // ── Chart 3: Dual-Axis — Investment Timeline vs Exchange Rate ─────
+            // Build unique commodity pairs from this report's assets
+            const pairs = [...new Map(
+                data.assets.map(a => [`${a.commodity}/${a.cost_commodity}`, a])
+            ).values()];
+
+            if (pairs.length > 0) {
+                // Inject UI for the dual-axis section below the existing charts
+                const timelineSection = document.createElement('div');
+                timelineSection.className = 'mt-8';
+                timelineSection.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h4 class="text-base font-semibold text-gray-900">Investment Timeline vs Exchange Rate</h4>
+                            <p class="text-xs text-gray-400 mt-0.5">
+                                Bars = cumulative cost basis &amp; net return &nbsp;·&nbsp;
+                                Line = exchange rate (right axis)
+                            </p>
+                        </div>
+                        <select id="timeline-pair-select"
+                            class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 bg-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-400 shadow-sm">
+                            ${pairs.map(a =>
+                                `<option value="${a.commodity}|${a.cost_commodity}">${a.commodity} → ${a.cost_commodity}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                        <div id="roi-timeline-chart" style="height:360px;"></div>
+                    </div>`;
+
+                document.getElementById('report-output').appendChild(timelineSection);
+
+                // Load chart for the first pair immediately
+                loadTimelineChart(pairs[0].commodity, pairs[0].cost_commodity);
+
+                document.getElementById('timeline-pair-select').addEventListener('change', (e) => {
+                    const [c, cc] = e.target.value.split('|');
+                    loadTimelineChart(c, cc);
+                });
+            }
+        }
+    }
+
+    async function loadTimelineChart(commodity, costCommodity) {
+        const chartEl = document.getElementById('roi-timeline-chart');
+        if (!chartEl) return;
+
+        chartEl.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div></div>';
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const url = `/api/v1/reports/roi-timeline?journal_id=${selectedJournalId}&commodity=${commodity}&cost_commodity=${costCommodity}`;
+            const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+
+            if (res.status === 401) { window.location.href = '/auth/login'; return; }
+            const data = await res.json();
+
+            if (!data.timeline || data.timeline.length === 0) {
+                chartEl.innerHTML = '<p class="text-sm text-gray-400 text-center mt-16">No timeline data available for this pair.</p>';
+                return;
+            }
+
+            chartEl.innerHTML = '';
+
+            const months     = data.timeline.map(d => d.month);
+            const cumCost    = data.timeline.map(d => d.cum_cost);
+            const netReturn  = data.timeline.map(d => d.net_return);
+            const fxRate     = data.timeline.map(d => d.exchange_rate);
+
+            const palette = { cost: '#6366f1', gain: '#10b981', loss: '#ef4444', fx: '#f59e0b' };
+            const netColors = netReturn.map(v => v === null ? '#9ca3af' : (v >= 0 ? palette.gain : palette.loss));
+
+            const traces = [
+                // Bar 1 — Cumulative Cost Basis
+                {
+                    type: 'bar',
+                    name: `Cost Basis (${costCommodity})`,
+                    x: months,
+                    y: cumCost,
+                    marker: { color: palette.cost, opacity: 0.80 },
+                    yaxis: 'y',
+                    hovertemplate: '<b>%{x}</b><br>Cumulative Cost: %{y:,.2f} ' + costCommodity + '<extra></extra>',
+                },
+                // Bar 2 — Net Return (gain/loss)
+                {
+                    type: 'bar',
+                    name: `Net Return (${costCommodity})`,
+                    x: months,
+                    y: netReturn,
+                    marker: { color: netColors, opacity: 0.85 },
+                    yaxis: 'y',
+                    hovertemplate: '<b>%{x}</b><br>Net Return: %{y:+,.2f} ' + costCommodity + '<extra></extra>',
+                },
+                // Line — Exchange Rate
+                {
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: `Rate (${commodity}/${costCommodity})`,
+                    x: months,
+                    y: fxRate,
+                    line: { color: palette.fx, width: 2.5, dash: 'solid' },
+                    marker: { size: 5, color: palette.fx },
+                    yaxis: 'y2',
+                    hovertemplate: '<b>%{x}</b><br>Rate: %{y:,.4f}<extra></extra>',
+                    connectgaps: true,
+                },
+            ];
+
+            const layout = {
+                barmode: 'overlay',
+                margin: { t: 20, r: 70, b: 70, l: 70 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor:  'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
+                legend: { orientation: 'h', y: -0.2 },
+                bargap: 0.3,
+                xaxis: {
+                    type: 'category',
+                    tickangle: -35,
+                    automargin: true,
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                },
+                yaxis: {
+                    title: { text: costCommodity, standoff: 8 },
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                    zeroline: true,
+                    zerolinecolor: '#d1d5db',
+                },
+                yaxis2: {
+                    title: { text: `Rate (${commodity}/${costCommodity})`, standoff: 8 },
+                    overlaying: 'y',
+                    side: 'right',
+                    showgrid: false,
+                    linecolor: '#f59e0b',
+                    tickfont: { color: '#f59e0b' },
+                    titlefont: { color: '#f59e0b' },
+                    zeroline: false,
+                },
+            };
+
+            Plotly.newPlot('roi-timeline-chart', traces, layout, { responsive: true, displayModeBar: false });
+
+        } catch (err) {
+            console.error(err);
+            chartEl.innerHTML = '<p class="text-sm text-red-500 text-center mt-16">Error loading timeline chart.</p>';
+        }
     }
 </script>
-
-
 {% endblock %}
+

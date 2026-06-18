@@ -333,3 +333,47 @@ class ReportService:
             is_complete=len(missing_rates) == 0,
             missing_rates=missing_rates if missing_rates else None
         )
+
+    async def generate_roi_timeline(
+        self,
+        owner_id: UUID,
+        journal_id: UUID,
+        commodity: str,
+        cost_commodity: str,
+    ) -> dict:
+        """
+        Return month-by-month cumulative cost basis, net return, and exchange rate
+        for a specific commodity/cost_commodity investment pair.
+        """
+        from datetime import date as date_cls
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Journal Not Found")
+
+        timeline = await self.report_repo.get_roi_monthly_timeline(
+            journal_id, commodity.upper(), cost_commodity.upper()
+        )
+
+        # For each month fetch exchange rate (commodity → cost_commodity)
+        for point in timeline:
+            month_date = date_cls.fromisoformat(point["month"])
+            rate = await self.market_price_repo.get_rate(
+                commodity.upper(), cost_commodity.upper(), month_date
+            )
+            # current_value = quantity * rate
+            if rate is not None:
+                point["exchange_rate"] = float(rate)
+                point["current_value"] = round(point["cum_qty"] * float(rate), 4)
+                point["net_return"] = round(point["current_value"] - point["cum_cost"], 4)
+            else:
+                point["exchange_rate"] = None
+                point["current_value"] = None
+                point["net_return"] = None
+
+        return {
+            "commodity": commodity.upper(),
+            "cost_commodity": cost_commodity.upper(),
+            "timeline": timeline,
+        }
+

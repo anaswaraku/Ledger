@@ -171,3 +171,24 @@ async def get_roi_report(
         journal_id=journal_id,
         as_of=as_of,
     )
+
+
+@router.get("/roi-timeline", summary="Month-by-month ROI timeline with exchange rate")
+async def get_roi_timeline(
+    journal_id: UUID = Query(...),
+    commodity: str = Query(..., description="The asset commodity, e.g. BTC"),
+    cost_commodity: str = Query(..., description="The cost currency, e.g. USD"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Returns month-by-month cumulative cost basis, current value, net return,
+    and exchange rate for a specific investment commodity pair.
+    Used by the dual-axis bar+line chart on the ROI page.
+    """
+    return await _make_report_service(db).generate_roi_timeline(
+        owner_id=current_user.id,
+        journal_id=journal_id,
+        commodity=commodity,
+        cost_commodity=cost_commodity,
+    )

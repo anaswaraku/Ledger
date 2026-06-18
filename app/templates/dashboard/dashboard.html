@@ -29,7 +29,7 @@
         <p class="mt-2 text-sm text-gray-500" id="assets-display"></p>
     </a>
 
-    <a 
+    <a
         class="group relative bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md hover:border-brand transition-all">
         <div class="flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900">Liabilities</h3>
@@ -37,7 +37,27 @@
         </div>
         <p class="mt-2 text-sm text-gray-500" id="liabilities-display"></p>
     </a>
-     
+
+</div>
+
+<!-- Asset Account Charts -->
+<div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-900">Asset Accounts — Activity</h2>
+        <span id="asset-chart-status" class="text-xs text-gray-400 animate-pulse"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Bar Chart: Transaction Count -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <h3 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Transaction Count by Account</h3>
+            <div id="asset-bar-chart" style="height:300px;"></div>
+        </div>
+        <!-- Pie Chart: Total Amount -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <h3 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Amount Distribution by Account</h3>
+            <div id="asset-pie-chart" style="height:300px;"></div>
+        </div>
+    </div>
 </div>
 
 <h2>Recent Transactions</h2>
@@ -46,6 +66,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
 <script>
     async function showNetWorth() {
         const displayEl = document.getElementById("networth-display");
@@ -90,27 +111,27 @@
             </span>
         `;
 
-        const assetsEl = document.getElementById("assets-display");
-        if(assetsEl){
-            assetsEl.innerHTML=`<span class="text-brand font-semibold text-xl">${formatter.format(data.assets)}</span><br><span class="text-xs text-gray-400">Assets</span>`
-        }
-        
-        const liabilitiesEl = document.getElementById("liabilities-display");
-        if(liabilitiesEl){
-            liabilitiesEl.innerHTML=`<span class="text-brand font-semibold text-xl">${formatter.format(data.liabilities)}</span><br><span class="text-xs text-gray-400">Liabilities</span>`
-        }
-
-        // Fetch Monthly Income
-        const incomeRes = await fetch('/api/v1/reports/monthly-income?journal_id=' + journalId, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (incomeRes.ok) {
-            const incomeData = await incomeRes.json();
-            const incomeEl = document.getElementById("monthly-income-display");
-            if (incomeEl) {
-                incomeEl.innerHTML = `<span class="text-brand font-semibold text-xl">${formatter.format(incomeData.monthly_income)}</span><br><span class="text-xs text-gray-400">This Month</span>`;
+            const assetsEl = document.getElementById("assets-display");
+            if (assetsEl) {
+                assetsEl.innerHTML = `<span class="text-brand font-semibold text-xl">${formatter.format(data.assets)}</span><br><span class="text-xs text-gray-400">Assets</span>`
             }
-        }
+
+            const liabilitiesEl = document.getElementById("liabilities-display");
+            if (liabilitiesEl) {
+                liabilitiesEl.innerHTML = `<span class="text-brand font-semibold text-xl">${formatter.format(data.liabilities)}</span><br><span class="text-xs text-gray-400">Liabilities</span>`
+            }
+
+            // Fetch Monthly Income
+            const incomeRes = await fetch('/api/v1/reports/monthly-income?journal_id=' + journalId, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (incomeRes.ok) {
+                const incomeData = await incomeRes.json();
+                const incomeEl = document.getElementById("monthly-income-display");
+                if (incomeEl) {
+                    incomeEl.innerHTML = `<span class="text-brand font-semibold text-xl">${formatter.format(incomeData.monthly_income)}</span><br><span class="text-xs text-gray-400">This Month</span>`;
+                }
+            }
         } catch (error) {
             console.error(error);
             displayEl.innerHTML = '<span class="text-red-500">Error loading data</span>';
@@ -156,7 +177,7 @@
             });
 
             let html = '<div class="col-span-1 sm:col-span-2 overflow-x-auto bg-white border border-gray-200 rounded-xl shadow-sm"><table class="min-w-full text-sm text-left"><thead class="bg-gray-50 text-gray-600 font-medium border-b border-gray-200"><tr><th class="px-6 py-4">Date</th><th class="px-6 py-4">Payee</th><th class="px-6 py-4">Description</th><th class="px-6 py-4">Account</th><th class="px-6 py-4 text-right">Entry Amount</th></tr></thead><tbody class="divide-y divide-gray-100">';
-            
+
             txns.forEach(t => {
                 const payee = t.payee ? t.payee : '-';
                 const desc = t.description ? t.description : '-';
@@ -172,7 +193,7 @@
                     </tr>`;
                 });
             });
-            
+
             html += '</tbody></table></div>';
             displayEl.innerHTML = html;
         } catch (error) {
@@ -181,9 +202,148 @@
         }
     }
 
+    // ── Asset Charts (Plotly) ──────────────────────────────────────────────────
+
+    async function showAssetCharts() {
+        const statusEl = document.getElementById("asset-chart-status");
+        const journalId = localStorage.getItem("selectedJournalId");
+
+        if (!journalId) {
+            if (statusEl) statusEl.textContent = "Select a journal to view charts.";
+            renderEmptyCharts();
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = "Loading…";
+
+        try {
+            const token = localStorage.getItem("access_token");
+            const response = await fetch(
+                `/api/v1/name/count?journal_id=${journalId}&account_type=ASSET`,
+                { headers: { 'Authorization': 'Bearer ' + token } }
+            );
+
+            if (response.status === 401) {
+                window.location.href = "/auth/login";
+                return;
+            }
+            if (!response.ok) throw new Error("Failed to load asset data");
+
+            const data = await response.json();  // [{name, count, amount}, ...]
+
+            if (!data || data.length === 0) {
+                if (statusEl) statusEl.textContent = "No asset accounts found.";
+                renderEmptyCharts();
+                return;
+            }
+
+            if (statusEl) statusEl.textContent = "";
+
+            const names   = data.map(d => d.name);
+            const counts  = data.map(d => d.count);
+            const amounts = data.map(d => Math.abs(parseFloat(d.amount)));
+
+            // Colour palette
+            const palette = [
+                '#6366f1','#8b5cf6','#ec4899','#f59e0b',
+                '#10b981','#3b82f6','#ef4444','#14b8a6',
+            ];
+
+            // ── Bar Chart ────────────────────────────────────────────────────
+            const barTrace = {
+                type: 'bar',
+                x: names,
+                y: counts,
+                marker: {
+                    color: names.map((_, i) => palette[i % palette.length]),
+                    opacity: 0.88,
+                },
+                hovertemplate: '<b>%{x}</b><br>Entries: %{y}<extra></extra>',
+            };
+
+            const barLayout = {
+                margin: { t: 10, r: 10, b: 80, l: 50 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor:  'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', size: 12, color: '#374151' },
+                xaxis: {
+                    tickangle: -35,
+                    automargin: true,
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                },
+                yaxis: {
+                    title: 'No. of entries',
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                },
+                bargap: 0.35,
+            };
+
+            Plotly.newPlot('asset-bar-chart', [barTrace], barLayout, {
+                responsive: true,
+                displayModeBar: false,
+            });
+
+            // ── Pie Chart ────────────────────────────────────────────────────
+            const pieTrace = {
+                type: 'pie',
+                labels: names,
+                values: amounts,
+                hole: 0.42,            // donut style
+                marker: { colors: palette },
+                textinfo: 'percent',
+                hovertemplate: '<b>%{label}</b><br>Amount: %{value:,.2f}<br>%{percent}<extra></extra>',
+                insidetextorientation: 'radial',
+            };
+
+            const pieLayout = {
+                margin: { t: 10, r: 10, b: 10, l: 10 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: true,
+                legend: {
+                    orientation: 'v',
+                    x: 1.02, y: 0.5,
+                    font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
+                },
+                font: { family: 'Inter, sans-serif', size: 12, color: '#374151' },
+            };
+
+            Plotly.newPlot('asset-pie-chart', [pieTrace], pieLayout, {
+                responsive: true,
+                displayModeBar: false,
+            });
+
+        } catch (error) {
+            console.error(error);
+            if (statusEl) statusEl.textContent = "Error loading chart data.";
+            renderEmptyCharts();
+        }
+    }
+
+    function renderEmptyCharts() {
+        const emptyLayout = {
+            margin: { t: 10, r: 10, b: 10, l: 10 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            annotations: [{
+                text: 'No data available',
+                xref: 'paper', yref: 'paper',
+                x: 0.5, y: 0.5, showarrow: false,
+                font: { size: 14, color: '#9ca3af' },
+            }],
+            xaxis: { visible: false },
+            yaxis: { visible: false },
+        };
+        Plotly.newPlot('asset-bar-chart', [], emptyLayout, { responsive: true, displayModeBar: false });
+        Plotly.newPlot('asset-pie-chart', [], emptyLayout, { responsive: true, displayModeBar: false });
+    }
+
     // Automatically call it when page loads
     document.addEventListener("DOMContentLoaded", showNetWorth);
     document.addEventListener("DOMContentLoaded", showRecentTransactions);
+    document.addEventListener("DOMContentLoaded", showAssetCharts);
+
 
 
 </script>
