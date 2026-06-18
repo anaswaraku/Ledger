@@ -6,6 +6,13 @@ from app.dependencies import get_current_user,get_plot_service
 from app.domain.models import User
 from app.domain.models.account import AccountType
 from app.application.services.plot_service import PlotService
+from pydantic import BaseModel
+from decimal import Decimal
+
+class PlotDataResponse(BaseModel):
+    name:str
+    count:int
+    amount:Decimal
 
 router = APIRouter(prefix="/api/v1/name", tags=["Plots"])
 
@@ -22,7 +29,7 @@ async def get_names_by_type(
         account_type
     )
 
-@router.get("/count", response_model=list[str])
+@router.get("/count", response_model=list[PlotDataResponse])
 async def get_counts_by_acc(
     journal_id:UUID,
     account_type: AccountType = Query(...),

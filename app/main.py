@@ -119,7 +119,7 @@ async def import_transactions_page(request: Request):
     return templates.TemplateResponse(request=request, name="transactions/import.html")
 
 
-@app.get("/reports", tags=["Web"], summary="Reports page")
+@app.get("/repocrts", tags=["Web"], summary="Reports page")
 async def reports_page(request: Request):
     return templates.TemplateResponse(request=request, name="reports/reports.html")
 

@@ -42,7 +42,7 @@ class PlotService:
             owner_id:UUID,
             journal_id:UUID,
             account_type:AccountType,
-            )->list[str]:
+            )->list[dict]:
         journal = await self.journal_repo.get_by_id_and_owner(journal_id=journal_id,owner_id=owner_id)
         if not journal:
             raise HTTPException(
@@ -53,5 +53,4 @@ class PlotService:
             journal_id,
             account_type
         )
-        return [count.account for count in counts]
-    
+        return counts 
