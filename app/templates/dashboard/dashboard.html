@@ -59,6 +59,25 @@
         </div>
     </div>
 </div>
+<!-- EXPENSE Account Charts -->
+<div class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-bold text-gray-900">Expense Accounts — Activity</h2>
+        <span id="asset-chart-status" class="text-xs text-gray-400 animate-pulse"></span>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Bar Chart: Transaction Count -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <h3 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Transaction Count by Account</h3>
+            <div id="expense-bar-chart" style="height:300px;"></div>
+        </div>
+        <!-- Pie Chart: Total Amount -->
+        <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+            <h3 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Amount Distribution by Account</h3>
+            <div id="expense-pie-chart" style="height:300px;"></div>
+        </div>
+    </div>
+</div>
 
 <h2>Recent Transactions</h2>
 <div id="recent-transactions-display" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
@@ -339,10 +358,152 @@
         Plotly.newPlot('asset-pie-chart', [], emptyLayout, { responsive: true, displayModeBar: false });
     }
 
+    
+    async function ExpenseCharts() {
+        const statusEl = document.getElementById("asset-chart-status");
+        const journalId = localStorage.getItem("selectedJournalId");
+
+        if (!journalId) {
+            if (statusEl) statusEl.textContent = "Select a journal to view charts.";
+            renderEmptyCharts();
+            return;
+        }
+
+        if (statusEl) statusEl.textContent = "Loading…";
+
+        try {
+            const token = localStorage.getItem("access_token");
+            const response = await fetch(
+                `/api/v1/name/count?journal_id=${journalId}&account_type=EXPENSE`,
+                { headers: { 'Authorization': 'Bearer ' + token } }
+            );
+
+            if (response.status === 401) {
+                window.location.href = "/auth/login";
+                return;
+            }
+            if (!response.ok) throw new Error("Failed to load asset data");
+
+            const data = await response.json();  // [{name, count, amount}, ...]
+
+            if (!data || data.length === 0) {
+                if (statusEl) statusEl.textContent = "No asset accounts found.";
+                renderEmptyCharts();
+                return;
+            }
+
+            if (statusEl) statusEl.textContent = "";
+
+            const names   = data.map(d => d.name);
+            const counts  = data.map(d => d.count);
+            const amounts = data.map(d => Math.abs(parseFloat(d.amount)));
+
+            // Colour palette
+            const palette = [
+                '#6366f1','#8b5cf6','#ec4899','#f59e0b',
+                '#10b981','#3b82f6','#ef4444','#14b8a6',
+            ];
+
+            // ── Bar Chart ────────────────────────────────────────────────────
+            const barTrace = {
+                type: 'bar',
+                x: names,
+                y: counts,
+                marker: {
+                    color: names.map((_, i) => palette[i % palette.length]),
+                    opacity: 0.88,
+                },
+                hovertemplate: '<b>%{x}</b><br>Entries: %{y}<extra></extra>',
+            };
+
+            const barLayout = {
+                margin: { t: 10, r: 10, b: 80, l: 50 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor:  'rgba(0,0,0,0)',
+                font: { family: 'Inter, sans-serif', size: 12, color: '#374151' },
+                xaxis: {
+                    tickangle: -35,
+                    automargin: true,
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                },
+                yaxis: {
+                    title: 'No. of entries',
+                    gridcolor: '#f3f4f6',
+                    linecolor: '#e5e7eb',
+                },
+                bargap: 0.35,
+            };
+
+            Plotly.newPlot('expense-bar-chart', [barTrace], barLayout, {
+                responsive: true,
+                displayModeBar: false,
+            });
+
+            // ── Pie Chart ────────────────────────────────────────────────────
+            const pieTrace = {
+                type: 'pie',
+                labels: names,
+                values: amounts,
+                hole: 0.42,            // donut style
+                marker: { colors: palette },
+                textinfo: 'percent',
+                hovertemplate: '<b>%{label}</b><br>Amount: %{value:,.2f}<br>%{percent}<extra></extra>',
+                insidetextorientation: 'radial',
+            };
+
+            const pieLayout = {
+                margin: { t: 10, r: 10, b: 10, l: 10 },
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: true,
+                legend: {
+                    orientation: 'v',
+                    x: 1.02, y: 0.5,
+                    font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
+                },
+                font: { family: 'Inter, sans-serif', size: 12, color: '#374151' },
+            };
+
+            Plotly.newPlot('expense-pie-chart', [pieTrace], pieLayout, {
+                responsive: true,
+                displayModeBar: false,
+            });
+
+        } catch (error) {
+            console.error(error);
+            if (statusEl) statusEl.textContent = "Error loading chart data.";
+            renderEmptyCharts();
+        }
+    }
+
+    function renderEmptyChartss() {
+        const emptyLayout = {
+            margin: { t: 10, r: 10, b: 10, l: 10 },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            annotations: [{
+                text: 'No data available',
+                xref: 'paper', yref: 'paper',
+                x: 0.5, y: 0.5, showarrow: false,
+                font: { size: 14, color: '#9ca3af' },
+            }],
+            xaxis: { visible: false },
+            yaxis: { visible: false },
+        };
+        Plotly.newPlot('expense-bar-chart', [], emptyLayout, { responsive: true, displayModeBar: false });
+        Plotly.newPlot('expense-pie-chart', [], emptyLayout, { responsive: true, displayModeBar: false });
+    }
+
+  
+
+
+
+
     // Automatically call it when page loads
     document.addEventListener("DOMContentLoaded", showNetWorth);
     document.addEventListener("DOMContentLoaded", showRecentTransactions);
     document.addEventListener("DOMContentLoaded", showAssetCharts);
+    document.addEventListener("DOMContentLoaded", ExpenseCharts);
 
 
 
