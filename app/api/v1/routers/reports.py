@@ -192,3 +192,77 @@ async def get_roi_timeline(
         commodity=commodity,
         cost_commodity=cost_commodity,
     )
+
+from fastapi.responses import HTMLResponse
+import plotly.graph_objects as go
+
+@router.get("/htmx/roi-chart", response_class=HTMLResponse, summary="HTMX ROI chart")
+async def get_htmx_roi_chart(
+    journal_id: UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from datetime import date
+    report_service = _make_report_service(db)
+    
+    roi_report = await report_service.generate_roi_report(
+        owner_id=current_user.id,
+        journal_id=journal_id,
+        as_of=date.today(),
+    )
+    
+    if not roi_report.assets:
+        return "<p class='text-xs text-gray-400 text-center mt-16'>No historical data available yet.</p>"
+        
+    pairs = list(dict.fromkeys((a.commodity, a.cost_commodity) for a in roi_report.assets))
+    lineColors = ['#f59e0b','#6366f1','#10b981','#ef4444','#3b82f6','#ec4899','#8b5cf6','#14b8a6']
+    
+    fig = go.Figure()
+    
+    for i, (commodity, cost_commodity) in enumerate(pairs):
+        timeline_data = await report_service.generate_roi_timeline(
+            owner_id=current_user.id, 
+            journal_id=journal_id, 
+            commodity=commodity, 
+            cost_commodity=cost_commodity
+        )
+        timeline = timeline_data.get("timeline", [])
+        if not timeline:
+            continue
+            
+        months = [d["month"] for d in timeline]
+        rois = []
+        for d in timeline:
+            cum = float(d["cum_cost"])
+            net = d["net_return"]
+            if cum > 0 and net is not None:
+                rois.append(float(net) / cum * 100)
+            else:
+                rois.append(None)
+                
+        color = lineColors[i % len(lineColors)]
+        fig.add_trace(go.Scatter(
+            x=months, y=rois,
+            mode='lines+markers',
+            name=f"{commodity} ROI%",
+            line=dict(color=color, width=2.5, shape='spline', smoothing=1.2),
+            marker=dict(size=4, color=color),
+            connectgaps=True,
+            hovertemplate='<b>%{x}</b><br>ROI: %{y:+.2f}%<extra>'+f"{commodity} ROI%"+'</extra>'
+        ))
+        
+    if not fig.data:
+        return "<p class='text-xs text-gray-400 text-center mt-16'>No historical data available yet.</p>"
+        
+    fig.update_layout(
+        margin=dict(t=10, r=15, b=50, l=50),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Inter, sans-serif', size=11, color='#374151'),
+        legend=dict(orientation='h', y=-0.18, x=0),
+        xaxis=dict(type='category', tickangle=-25, gridcolor='#f3f4f6', linecolor='#e5e7eb', tickfont=dict(size=10)),
+        yaxis=dict(title='ROI %', gridcolor='#f3f4f6', linecolor='#e5e7eb', zeroline=True, zerolinecolor='#d1d5db', zerolinewidth=1, ticksuffix='%', tickfont=dict(size=10)),
+        height=280
+    )
+    
+    return fig.to_html(full_html=False, include_plotlyjs=False)

@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Reports â€” Ledger{% endblock %}
 
@@ -457,7 +457,11 @@
                 <!-- ROI line chart (2/3 width) -->
                 <div class="lg:col-span-2 bg-white border border-gray-200 rounded-xl shadow-sm p-5">
                     <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">ROI Over Time</p>
-                    <div id="roi-timeline-chart" style="height:280px;">
+                    <div id="roi-timeline-chart" style="height:280px;"
+                         hx-get="/api/v1/reports/htmx/roi-chart"
+                         hx-vals='js:{journal_id: localStorage.getItem("selectedJournalId")}'
+                         hx-trigger="load"
+                         hx-swap="innerHTML">
                         <div class="flex items-center justify-center h-full">
                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                         </div>
@@ -510,88 +514,12 @@
                 </div>
             </div>`;
 
-        // â”€â”€ Fetch and render ROI% lines chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Trigger HTMX to load the backend chart
         if (data.assets.length > 0) {
-            renderRoiTimelineLines(data.assets, lineColors);
-        }
-    }
-
-    // Fetch all commodity pairs in parallel, render overlaid ROI% lines
-    async function renderRoiTimelineLines(assets, lineColors) {
-        const chartEl = document.getElementById('roi-timeline-chart');
-        if (!chartEl) return;
-
-        // Get unique pairs
-        const pairs = [...new Map(assets.map(a => [`${a.commodity}|${a.cost_commodity}`, a])).values()];
-        const token = localStorage.getItem('access_token');
-
-        try {
-            const results = await Promise.all(pairs.map(async (a, i) => {
-                const url = `/api/v1/reports/roi-timeline?journal_id=${selectedJournalId}&commodity=${a.commodity}&cost_commodity=${a.cost_commodity}`;
-                const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-                if (!res.ok) return null;
-                const d = await res.json();
-                return { label: `${a.commodity} ROI%`, timeline: d.timeline, color: lineColors[i % lineColors.length] };
-            }));
-
-            const valid = results.filter(r => r && r.timeline && r.timeline.length > 0);
-
-            if (valid.length === 0) {
-                chartEl.innerHTML = '<p class="text-xs text-gray-400 text-center mt-16">No historical data available yet.</p>';
-                return;
+            const chartEl = document.getElementById('roi-timeline-chart');
+            if (chartEl && window.htmx) {
+                htmx.process(chartEl);
             }
-
-            chartEl.innerHTML = '';
-
-            const traces = valid.map(r => {
-                const months  = r.timeline.map(d => d.month);
-                const roiPcts = r.timeline.map(d =>
-                    d.cum_cost > 0 && d.net_return !== null
-                        ? parseFloat(((d.net_return / d.cum_cost) * 100).toFixed(2))
-                        : null
-                );
-                return {
-                    type: 'scatter',
-                    mode: 'lines+markers',
-                    name: r.label,
-                    x: months,
-                    y: roiPcts,
-                    line: { color: r.color, width: 2.5, shape: 'spline', smoothing: 1.2 },
-                    marker: { size: 4, color: r.color },
-                    hovertemplate: '<b>%{x}</b><br>ROI: %{y:+.2f}%<extra>' + r.label + '</extra>',
-                    connectgaps: true,
-                };
-            });
-
-            Plotly.newPlot('roi-timeline-chart', traces, {
-                margin: { t: 10, r: 15, b: 50, l: 50 },
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor:  'rgba(0,0,0,0)',
-                font: { family: 'Inter, sans-serif', size: 11, color: '#374151' },
-                legend: { orientation: 'h', y: -0.18, x: 0 },
-                xaxis: {
-                    type: 'category',
-                    tickangle: -25,
-                    automargin: true,
-                    gridcolor: '#f3f4f6',
-                    linecolor: '#e5e7eb',
-                    tickfont: { size: 10 },
-                },
-                yaxis: {
-                    title: 'ROI %',
-                    gridcolor: '#f3f4f6',
-                    linecolor: '#e5e7eb',
-                    zeroline: true,
-                    zerolinecolor: '#d1d5db',
-                    zerolinewidth: 1,
-                    ticksuffix: '%',
-                    tickfont: { size: 10 },
-                },
-            }, { responsive: true, displayModeBar: false });
-
-        } catch (err) {
-            console.error(err);
-            chartEl.innerHTML = '<p class="text-xs text-red-400 text-center mt-16">Error loading chart.</p>';
         }
     }
 </script>
