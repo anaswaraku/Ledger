@@ -23,4 +23,8 @@ pytest
 pytest-asyncio
 httpx
 aiosqlite
+
+
+#plotting
 plotly[express]
+pandas
