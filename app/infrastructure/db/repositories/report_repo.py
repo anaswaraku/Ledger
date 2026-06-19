@@ -288,4 +288,4 @@ class ReportRepository:
                 "cum_cost": float(cum_cost),
                 "cum_qty":  float(cum_qty),
             })
-        return timeline
+        return timeline

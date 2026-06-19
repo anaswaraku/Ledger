@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class TransactionService:
-    """Business logic for double-entry transaction management."""
+    """Logic for double-entry transaction management."""
 
     def __init__(
         self,

@@ -16,7 +16,7 @@ from app.domain.money import MissingExchangeRateError, MissingExchangeRatesColle
 logger = logging.getLogger(__name__)
 
 class BudgetService:
-    """Business logic for managing budgets."""
+    """Logic for managing budgets."""
 
     def __init__(
         self, 

@@ -11,7 +11,7 @@ from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepo
 
 
 class CurrencyService:
-    """Business logic for historical exchange rates and currency conversion."""
+    """Logic for historical exchange rates and currency conversion."""
 
     def __init__(self, repo: MarketPriceRepository) -> None:
         self.repo = repo

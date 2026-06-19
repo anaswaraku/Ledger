@@ -142,7 +142,7 @@ hledger_web/
 │   │   │       ├── report.py
 │   │   │       └── auth.py
 │   │
-│   ├── application/               # Business logic layer
+│   ├── application/               # Logic layer
 │   │   ├── services/
 │   │   │   ├── transaction_service.py
 │   │   │   ├── account_service.py

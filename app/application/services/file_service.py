@@ -1,6 +1,6 @@
 # app/application/services/file_service.py
 """
-Business logic for CSV import and journal export (FR-6.3, FR-6.4, FR-1.7).
+Logic for CSV import and journal export (FR-6.3, FR-6.4, FR-1.7).
 """
 import csv
 import io

@@ -11,6 +11,7 @@ from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
 from app.infrastructure.db.repositories.plot_repo import PlotRepository
+from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
 from app.api.v1.schemas.account import RegisterEntryResponse
 from decimal import Decimal
 
@@ -18,10 +19,12 @@ class PlotService:
     def __init__(self,
                  account_repo:AccountRepository,
                  journal_repo: JournalRepository,
-                 plot_repo: PlotRepository):
+                 plot_repo: PlotRepository,
+                 market_price_repo: MarketPriceRepository):
         self.account_repo = account_repo
         self.journal_repo = journal_repo
         self.plot_repo = plot_repo
+        self.market_price_repo = market_price_repo
 
     async def get_names_by_type(
             self,owner_id:UUID,
@@ -54,3 +57,10 @@ class PlotService:
             account_type
         )
         return counts 
+    
+    async def get_market_price(self,
+                               skip:int =0,
+                               limit:int=500):
+        if not self.market_price_repo:
+            return[]
+        return await self.market_price_repo.list_prices(skip=skip,limit=limit)

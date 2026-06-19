@@ -69,8 +69,8 @@ class TransactionCreate(TransactionBase):
         balances: dict[str, Decimal] = {}
         for e in entries:
             if e.cost_amount is not None and e.cost_currency is not None:
-                sign = Decimal("-1") if e.amount < 0 else Decimal("1")
-                cost_val = abs(e.cost_amount) * sign
+               
+                cost_val = e.amount* abs(e.cost_amount)
                 curr = e.cost_currency.strip().upper()
                 balances[curr] = balances.get(curr, Decimal("0")) + cost_val
             else:

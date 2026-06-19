@@ -1,6 +1,6 @@
 # app/domain/models/transaction.py
 import uuid
-from datetime import date
+from datetime import date as datetype
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, ForeignKey, Index, String, Text, Uuid
@@ -28,7 +28,7 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
         nullable=False,
     )
 
-    date: Mapped[date] = mapped_column(
+    date: Mapped[datetype] = mapped_column(
         Date,
         nullable=False,
     )
@@ -69,6 +69,7 @@ class Transaction(UUIDMixin, TimestampMixin, Base):
         balances: dict[str, Money] = {}
         #if costmoney exists use it otherwise use standard money
         for entry in self.entries:
+            
             value = entry.cost_money if entry.cost_money else entry.money
 
             if value.currency in balances:

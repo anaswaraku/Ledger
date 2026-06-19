@@ -10,11 +10,19 @@ from pydantic import BaseModel
 from decimal import Decimal
 from fastapi.responses import HTMLResponse
 import plotly.express as px
+from datetime import datetime as datetimetype
+import pandas as pd
 
 class PlotDataResponse(BaseModel):
     name:str
     count:int
     amount:Decimal
+
+class MarketPriceResponse(BaseModel):
+    date:datetimetype
+    currency_from:str
+    currency_to:str
+    rate: Decimal
 
 router = APIRouter(prefix="/api/v1/name", tags=["Plots"])
 
@@ -117,3 +125,50 @@ async def get_htmx_activity(
     </div>
     '''
     return html
+
+@router.get("/htmx-market-price",
+            response_class=HTMLResponse,
+            summary="Market Price Chart")
+async def get_market_price_chart(
+    current_user: User = Depends(get_current_user),
+    plot_service: PlotService = Depends(get_plot_service)
+):
+    prices = await plot_service.get_market_price(skip=0,limit=500)
+
+    if not prices:
+        return """
+        <div class="p-8 text-center bg-white border border-gray-200 rounded-xl shadow-sm">
+            <p class="text-gray-500">No Market Price data available.</p>
+        </div>
+        """
+    data=[]
+    for p in prices:
+        data.append(
+            {
+                "Pair":f"{p.currency_from}/{p.currency_to}",
+                "Date":p.date,
+                "Price": float(p.price)
+            }
+        )
+    df = pd.DataFrame(data)
+    df = df.sort_values(by="Date")
+
+    fig = px.line(
+        df,
+        x="Date",
+        y="Price",
+        color="Pair",
+        markers=True
+    )
+    fig.update_layout(
+        margin = dict(t=10,r=20,b=40,l=40),
+        paper_bgcolor = 'rgba(0,0,0,0)',
+        plot_bgcolor = 'rgba(0,0,0,0)',
+        font=dict(family='Inter, sans-serif', size=12, color='#374151'),
+        xaxis=dict(gridcolor='#f3f4f6', linecolor='#e5e7eb'),
+        yaxis=dict(gridcolor='#f3f4f6', linecolor='#e5e7eb'),
+        height=400,
+        legend=dict(orientation='h', yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+ 
+    return fig.to_html(full_html=False, include_plotlyjs=False)

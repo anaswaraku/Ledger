@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class AccountService:
-    """Business logic for account management."""
+    """Logic for account management."""
 
     def __init__(
         self,

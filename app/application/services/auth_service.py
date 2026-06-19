@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    """Business logic for user authentication and registration."""
+    """Logic for user authentication and registration."""
 
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo

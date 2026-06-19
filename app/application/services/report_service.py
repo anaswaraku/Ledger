@@ -24,7 +24,7 @@ def _deduplicate(missing: list[dict]) -> list[dict]:
     ]
 
 class ReportService:
-    """Business logic for generating financial reports."""
+    """Logic for generating financial reports."""
 
     def __init__(
         self,

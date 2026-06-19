@@ -23,6 +23,7 @@ from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.plot_repo import PlotRepository
 from app.infrastructure.db.repositories.budget_repo import BudgetRepository
+from app.infrastructure.db.repositories.market_price_repo import MarketPriceRepository
 
 logger = logging.getLogger(__name__)
 
@@ -97,5 +98,6 @@ async def get_plot_service(db: AsyncSession = Depends(get_db))->PlotService:
     return PlotService(
         account_repo=AccountRepository(db),
         journal_repo=JournalRepository(db),
-        plot_repo=PlotRepository(db)
+        plot_repo=PlotRepository(db),
+        market_price_repo=MarketPriceRepository(db)
     )

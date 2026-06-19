@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class JournalService:
-    """Business logic for journal (accounting book) management."""
+    """Logic for journal (accounting book) management."""
 
     def __init__(self, journal_repo: JournalRepository) -> None:
         self.journal_repo = journal_repo
