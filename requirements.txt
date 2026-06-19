@@ -23,4 +23,4 @@ pytest
 pytest-asyncio
 httpx
 aiosqlite
-plotly
+plotly[express]
