@@ -155,7 +155,7 @@ def test_transaction_balance_method():
         id=uuid.uuid4(),
         amount=Decimal("-100.00"),
         commodity="EUR",
-        cost_amount=Decimal("110.00"),
+        cost_amount=Decimal("1.10"),
         cost_commodity="USD",
     )
     e6 = TransactionEntry(

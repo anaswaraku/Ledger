@@ -81,5 +81,5 @@ class TransactionEntry(UUIDMixin, Base):
     def cost_money(self) -> "Money | None":
         from app.domain.money import Money
         if self.cost_amount is not None and self.cost_commodity is not None:
-            return Money(self.amount*abs(self.cost_amount),self.commodity)
+            return Money(self.amount*abs(self.cost_amount),self.cost_commodity)
         return None
