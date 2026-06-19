@@ -87,8 +87,22 @@
             </div>
         </div>
 
-        <!-- History Table Column -->
-        <div class="md:col-span-2">
+        <!-- Chart & History Column -->
+        <div class="md:col-span-2 space-y-8">
+            <!-- HTMX Price Chart -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900">Market Price History</h2>
+                </div>
+                <div hx-get="/api/v1/name/htmx-market-price"
+                     hx-trigger="load" class="min-w-full">
+                     <div class="flex items-center justify-center p-8">
+                         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
+                     </div>
+                </div>
+            </div>
+
+            <!-- History Table -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="px-6 py-5 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
                     <h2 class="text-lg font-bold text-gray-900">Exchange Rate History</h2>
@@ -118,7 +132,6 @@
             </div>
         </div>
     </div>
-    
 </div>
 
 <script>
