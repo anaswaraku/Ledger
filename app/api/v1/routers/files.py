@@ -178,10 +178,14 @@ async def export_journal(
         data = await service.export_json(owner_id=current_user.id, journal_id=journal_id)
         media_type = "application/json"
         filename = f"journal_{journal_id}.json"
+    elif fmt == "zip":
+        data = await service.export_all_zip(owner_id=current_user.id, journal_id=journal_id)
+        media_type = "application/zip"
+        filename = f"journal_export_{journal_id}.zip"
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid export format. Must be 'csv' or 'json'.",
+            detail="Invalid export format. Must be 'csv', 'json', or 'zip'.",
         )
 
     async def gen():

@@ -22,6 +22,7 @@ from app.infrastructure.db.repositories.transaction_repo import TransactionRepos
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.plot_repo import PlotRepository
+from app.infrastructure.db.repositories.budget_repo import BudgetRepository
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,7 @@ async def get_file_service(db: AsyncSession = Depends(get_db)) -> FileService:
         txn_repo=TransactionRepository(db),
         journal_repo=JournalRepository(db),
         account_repo=AccountRepository(db),
+        budget_repo=BudgetRepository(db),
     )
 
 async def get_plot_service(db: AsyncSession = Depends(get_db))->PlotService:

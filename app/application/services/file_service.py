@@ -35,10 +35,12 @@ class FileService:
         txn_repo: TransactionRepository,
         journal_repo: JournalRepository,
         account_repo: AccountRepository,
+        budget_repo, # type: ignore
     ) -> None:
         self.txn_repo = txn_repo
         self.journal_repo = journal_repo
         self.account_repo = account_repo
+        self.budget_repo = budget_repo
 
     # ── CSV Import ────────────────────────────────────────────────────────────
 
@@ -288,6 +290,48 @@ class FileService:
             ])
 
         return output.getvalue()
+
+    async def export_budgets_csv(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
+        """Export all budgets in a journal as CSV text."""
+        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
+        if not journal:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+
+        budgets = await self.budget_repo.list_by_journal(journal_id)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Account Name", "Amount", "Currency", "Period", "Start Date", "End Date"])
+
+        for b in budgets:
+            writer.writerow([
+                b.account.name if b.account else "Unknown",
+                str(b.amount),
+                b.currency,
+                b.period,
+                b.start_date.isoformat() if b.start_date else "",
+                b.end_date.isoformat() if b.end_date else "",
+            ])
+
+        return output.getvalue()
+
+    async def export_all_zip(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> bytes:
+        """Export accounts, transactions, and budgets as CSV files bundled in a ZIP archive."""
+        import zipfile
+        
+        accounts_csv = await self.export_accounts_csv(owner_id, journal_id)
+        transactions_csv = await self.export_transactions_csv(owner_id, journal_id)
+        budgets_csv = await self.export_budgets_csv(owner_id, journal_id)
+        json_backup = await self.export_json(owner_id, journal_id)
+        
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(f"accounts_{journal_id}.csv", accounts_csv)
+            zf.writestr(f"transactions_{journal_id}.csv", transactions_csv)
+            zf.writestr(f"budgets_{journal_id}.csv", budgets_csv)
+            zf.writestr(f"journal_backup_{journal_id}.json", json_backup)
+            
+        return zip_buffer.getvalue()
 
     async def export_json(self, owner_id: uuid.UUID, journal_id: uuid.UUID) -> str:
         """Export the journal, its accounts, and all transactions as JSON text for backup."""
