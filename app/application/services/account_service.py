@@ -1,16 +1,17 @@
 # app/application/services/account_service.py
 import logging
 import uuid
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 
+from app.api.v1.schemas.account import RegisterEntryResponse
+from app.application._utils import get_journal_or_404
 from app.domain.models.account import Account, AccountType
 from app.domain.rules.account_validation import AccountValidationError, validate_account_name
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
-from app.api.v1.schemas.account import RegisterEntryResponse
-from decimal import Decimal
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +36,8 @@ class AccountService:
         name: str,
         account_type: AccountType,
     ) -> Account:
-        # 1. Verify journal ownership
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Journal not found.",
-            )
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
 
-        # 2. Validate account name format
         try:
             normalised_name = validate_account_name(name)
         except AccountValidationError as exc:
@@ -52,10 +46,7 @@ class AccountService:
                 detail=str(exc),
             )
 
-        # 3. Check for duplicates within the journal
-        existing = await self.account_repo.get_by_name_and_journal(
-            normalised_name, journal_id
-        )
+        existing = await self.account_repo.get_by_name_and_journal(normalised_name, journal_id)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -73,51 +64,42 @@ class AccountService:
     async def list_for_journal(
         self, owner_id: uuid.UUID, journal_id: uuid.UUID
     ) -> list[Account]:
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Journal not found.",
-            )
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
         return await self.account_repo.get_by_journal(journal_id)
 
     async def search(
         self, owner_id: uuid.UUID, journal_id: uuid.UUID, prefix: str
     ) -> list[Account]:
         """Auto-suggest accounts matching a name prefix (FR-2.5)."""
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=404, detail="Journal not found.")
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
         return await self.account_repo.search_by_name_prefix(journal_id, prefix)
 
-    async def get_account_register( 
+    async def get_account_register(
         self, owner_id: uuid.UUID, journal_id: uuid.UUID, account_id: uuid.UUID
     ) -> list[RegisterEntryResponse]:
-        """Returns chronological list of transactions with a running balance."""
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=404, detail="Journal not found.")
-            
+        """Returns chronological transaction list with a running balance (FR-4.4)."""
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
+
         account = await self.account_repo.get_by_id(account_id)
         if not account or account.journal_id != journal_id:
             raise HTTPException(status_code=404, detail="Account not found.")
 
         entries = await self.transaction_repo.get_account_entries(account_id)
-        
-        register = []
+
+        register: list[RegisterEntryResponse] = []
         running_balance = Decimal("0.0")
-        
+
         for txn, entry in entries:
             running_balance += entry.amount
-            register.append(RegisterEntryResponse(
-                transaction_id=txn.id,
-                date=txn.date,
-                payee=txn.payee,
-                description=txn.description,
-                amount=entry.amount,
-                running_balance=running_balance
-            ))
-            
-        return register
+            register.append(
+                RegisterEntryResponse(
+                    transaction_id=txn.id,
+                    date=txn.date,
+                    payee=txn.payee,
+                    description=txn.description,
+                    amount=entry.amount,
+                    running_balance=running_balance,
+                )
+            )
 
-    
+        return register

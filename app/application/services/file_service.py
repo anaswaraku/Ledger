@@ -12,6 +12,7 @@ from decimal import Decimal
 from fastapi import HTTPException, status
 
 from app.api.v1.schemas.file import CSVImportResponse, CSVImportRowError
+from app.application._utils import get_journal_or_404
 from app.domain.models.journal import Journal
 from app.domain.rules.double_entry import validate_double_entry, DoubleEntryError
 from app.infrastructure.db.repositories.account_repo import AccountRepository
@@ -54,9 +55,7 @@ class FileService:
     ) -> CSVImportResponse:
         """Parse a CSV string and create double-entry transactions."""
         # 1. Verify journal ownership
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+        journal = await get_journal_or_404(self.journal_repo, journal_id, owner_id)
 
         # 2. Verify both accounts belong to this journal
         for acc_id, label in [
@@ -118,9 +117,7 @@ class FileService:
         from app.api.v1.schemas.transaction import TransactionCreate
         from pydantic import ValidationError
 
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+        journal = await get_journal_or_404(self.journal_repo, journal_id, owner_id)
 
         accounts = await self.account_repo.get_by_journal(journal_id)
         account_name_map = {acc.name.lower(): acc.id for acc in accounts}
@@ -191,9 +188,7 @@ class FileService:
         from app.api.v1.schemas.account import AccountCreate
         from pydantic import ValidationError
 
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Journal not found.")
+        journal = await get_journal_or_404(self.journal_repo, journal_id, owner_id)
 
         result = parse_account_csv(csv_content)
         errors = [CSVImportRowError(row=e.row, message=e.message) for e in result.errors]

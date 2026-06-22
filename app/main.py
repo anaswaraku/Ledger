@@ -119,7 +119,7 @@ async def import_transactions_page(request: Request):
     return templates.TemplateResponse(request=request, name="transactions/import.html")
 
 
-@app.get("/repocrts", tags=["Web"], summary="Reports page")
+@app.get("/reports", tags=["Web"], summary="Reports page")
 async def reports_page(request: Request):
     return templates.TemplateResponse(request=request, name="reports/reports.html")
 
@@ -150,3 +150,4 @@ async def buget_page(request:Request):
 async def health() -> dict[str, str]:
     """Used by Docker, load-balancers, and uptime monitors."""
     return {"status": "ok"}
+  

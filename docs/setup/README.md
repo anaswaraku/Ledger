@@ -149,7 +149,7 @@ If you have Docker and Docker Compose installed, you can launch the complete sys
    docker compose up -d --build
    ```
 3. Docker Compose will automatically run the FastAPI container on [http://localhost:8000](http://localhost:8000) and link it to the DB container.
-4. Apply database migrations inside the running container (or let Docker handle DB initialization):
+4. Apply database migrations inside the running container:
    ```bash
    docker compose exec app alembic upgrade head
    ```

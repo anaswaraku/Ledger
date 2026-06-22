@@ -184,16 +184,26 @@ class TransactionNoteService:
 ```
 
 ### Step 7: Expose API Routers
-Create an endpoint in `app/api/v1/routers/transaction_notes.py`:
+Create an endpoint in `app/api/v1/routers/transaction_notes.py`. Following the project's DI pattern, add the service factory in `app/dependencies.py` first:
+
+```python
+# app/dependencies.py  — add this factory function
+async def get_transaction_note_service(db: AsyncSession = Depends(get_db)):
+    from app.application.services.transaction_note_service import TransactionNoteService
+    from app.infrastructure.db.repositories.transaction_note_repo import TransactionNoteRepository
+    return TransactionNoteService(TransactionNoteRepository(db))
+```
+
+Then create the router, injecting the service via `Depends()`:
+
 ```python
 # app/api/v1/routers/transaction_notes.py
 from uuid import UUID
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.infrastructure.db.database import get_db
 from app.api.v1.schemas.transaction_note import TransactionNoteCreate, TransactionNoteResponse
 from app.application.services.transaction_note_service import TransactionNoteService
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_transaction_note_service
+from app.domain.models.user import User
 
 router = APIRouter(prefix="/api/v1/transactions/{transaction_id}/notes", tags=["Transaction Notes"])
 
@@ -201,10 +211,9 @@ router = APIRouter(prefix="/api/v1/transactions/{transaction_id}/notes", tags=["
 async def create_note(
     transaction_id: UUID,
     payload: TransactionNoteCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_user)
+    service: TransactionNoteService = Depends(get_transaction_note_service),
+    current_user: User = Depends(get_current_user),
 ):
-    service = TransactionNoteService(db)
     return await service.add_note(transaction_id, payload.content)
 ```
 Include this new router inside the main file `app/main.py`:
@@ -239,3 +248,151 @@ Run your tests:
 ```bash
 pytest tests/
 ```
+
+---
+
+## Guide 3: How to Add a New API Router
+
+This guide shows the exact steps to wire up a brand new API router into the application, matching the pattern used in `app/main.py`.
+
+### Step 1: Create the Router File
+
+Create a new file in `app/api/v1/routers/`, e.g. `app/api/v1/routers/tags.py`:
+
+```python
+# app/api/v1/routers/tags.py
+from fastapi import APIRouter, Depends
+from app.dependencies import get_current_user
+from app.domain.models.user import User
+
+router = APIRouter(prefix="/api/v1/tags", tags=["Tags"])
+
+@router.get("/", summary="List all tags")
+async def list_tags(current_user: User = Depends(get_current_user)) -> list[str]:
+    """Returns a list of all unique tags used across transactions."""
+    return []
+```
+
+> [!IMPORTANT]
+> If your router needs a service (e.g. a database query), **do not** create a local `_make_service(db)` factory. Instead, add a factory function to `app/dependencies.py` following the existing pattern:
+> ```python
+> # app/dependencies.py
+> async def get_tag_service(db: AsyncSession = Depends(get_db)):
+>     from app.application.services.tag_service import TagService
+>     return TagService(db)
+> ```
+> Then inject it via `Depends(get_tag_service)` in your router handler.
+
+### Step 2: Register the Router in `app/main.py`
+
+Import and include the router in `app/main.py` alongside the existing routers:
+
+```python
+# app/main.py
+
+# Add the import alongside existing router imports (line 48)
+from app.api.v1.routers import auth, transactions, accounts, reports, files, journals, currencies, budgets, plot, tags
+
+# Add the include_router call after the existing include_router() calls (currently ending at line 58)
+app.include_router(tags.router)
+```
+
+### Step 3: Verify in Swagger UI
+
+Restart the application and open [http://localhost:8000/docs](http://localhost:8000/docs). Your new `Tags` section should appear with its endpoints listed.
+
+```bash
+# If running locally
+uvicorn app.main:app --reload
+
+# If running in Docker
+docker compose restart app
+```
+
+> [!IMPORTANT]
+> The router's `prefix` must start with `/api/v1/` to remain consistent with all other API routes in this application.
+
+---
+
+## Guide 4: How to Write and Run Tests
+
+The test suite uses `pytest` with `pytest-asyncio` and an in-memory SQLite database (via `aiosqlite`) so no running PostgreSQL instance is required during testing.
+
+### Test Configuration
+
+Tests are configured in `pytest.ini` at the project root:
+
+```ini
+[pytest]
+asyncio_mode = auto
+testpaths = tests
+```
+
+`asyncio_mode = auto` means all `async def` test functions are automatically treated as async tests — no `@pytest.mark.asyncio` decorator is needed.
+
+### Test Database Override
+
+The test suite overrides the `get_db` dependency with an in-memory SQLite session. This is already set up in `tests/conftest.py`. No PostgreSQL connection is required when running tests.
+
+### Writing a New Test
+
+Add tests to the appropriate directory under `tests/`:
+
+```
+tests/
+├── test_api/        ← HTTP endpoint tests using httpx TestClient
+├── test_services/   ← Application service unit tests
+└── test_domain/     ← Domain rule unit tests (pure Python, no DB)
+```
+
+**Example — API test:**
+
+```python
+# tests/test_api/test_tags.py
+import pytest
+from httpx import AsyncClient
+
+@pytest.mark.asyncio
+async def test_list_tags_unauthenticated(client: AsyncClient):
+    response = await client.get("/api/v1/tags/")
+    assert response.status_code == 401
+```
+
+**Example — Domain rule test (no DB needed):**
+
+```python
+# tests/test_domain/test_double_entry.py
+from decimal import Decimal
+from app.domain.rules.double_entry import validate_balance
+
+def test_balanced_entries_pass():
+    entries = [Decimal("50.00"), Decimal("-50.00")]
+    assert validate_balance(entries) is True
+
+def test_unbalanced_entries_raise():
+    entries = [Decimal("50.00"), Decimal("-30.00")]
+    with pytest.raises(ValueError):
+        validate_balance(entries)
+```
+
+### Running Tests
+
+```bash
+# Run the full test suite
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run a specific test file
+pytest tests/test_api/test_transactions.py
+
+# Run a single test function
+pytest tests/test_api/test_transactions.py::test_create_transaction
+
+# Run and show print output
+pytest -s
+```
+
+> [!NOTE]
+> Tests use `aiosqlite` (SQLite in-memory) instead of PostgreSQL. If you see `OperationalError` relating to SQLite syntax, it is likely a Postgres-specific SQL construct that needs a test-compatible alternative.

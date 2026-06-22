@@ -1,4 +1,6 @@
 # app/application/services/transaction_service.py
+from __future__ import annotations
+
 import logging
 import uuid
 from datetime import date as date_type
@@ -6,14 +8,11 @@ from datetime import date as date_type
 from fastapi import HTTPException, status
 
 from app.api.v1.schemas.transaction import TransactionCreate, TransactionUpdate
+from app.application._utils import get_journal_or_404
 from app.domain.models.transaction import Transaction
 from app.infrastructure.db.repositories.account_repo import AccountRepository
 from app.infrastructure.db.repositories.journal_repo import JournalRepository
 from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
-
-from app.domain.models.transaction import Transaction as DomainTransaction
-from app.domain.models.transaction_entry import TransactionEntry as DomainTransactionEntry
-from app.domain.money import UnbalancedTransactionError
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +30,16 @@ class TransactionService:
         self.journal_repo = journal_repo
         self.account_repo = account_repo
 
-    async def create(
-        self, data: TransactionCreate, owner_id: uuid.UUID
-    ) -> Transaction:
-        # 1. Verify journal ownership
-        journal = await self.journal_repo.get_by_id_and_owner(
-            data.journal_id, owner_id
-        )
-        if not journal:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Journal not found.",
-            )
+    async def create(self, data: TransactionCreate, owner_id: uuid.UUID) -> Transaction:
+        await get_journal_or_404(self.journal_repo, data.journal_id, owner_id)
 
-
-
-        # 3. Verify all account IDs belong to this journal
+        # Verify all account IDs belong to this journal
         for entry in data.entries:
             account = await self.account_repo.get_by_id(entry.account_id)
             if not account or account.journal_id != data.journal_id:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=(
-                        f"Account {entry.account_id} does not exist "
-                        "in the specified journal."
-                    ),
+                    detail=f"Account {entry.account_id} does not exist in the specified journal.",
                 )
 
         txn = await self.txn_repo.create(
@@ -94,21 +78,21 @@ class TransactionService:
         payee: str | None = None,
         description: str | None = None,
     ) -> list[Transaction]:
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=404, detail="Journal not found.")
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
         return await self.txn_repo.list_by_journal(
-            journal_id, skip=skip, limit=limit,
-            date_from=date_from, date_to=date_to, payee=payee,
+            journal_id,
+            skip=skip,
+            limit=limit,
+            date_from=date_from,
+            date_to=date_to,
+            payee=payee,
             description=description,
         )
 
     async def get_or_404(
         self, txn_id: uuid.UUID, journal_id: uuid.UUID, owner_id: uuid.UUID
     ) -> Transaction:
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=404, detail="Journal not found.")
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
         txn = await self.txn_repo.get_by_id(txn_id, journal_id)
         if not txn:
             raise HTTPException(status_code=404, detail="Transaction not found.")
@@ -123,25 +107,19 @@ class TransactionService:
     ) -> Transaction:
         await self.get_or_404(txn_id, journal_id, owner_id)
         updated = await self.txn_repo.update(
-            txn_id,
-            journal_id,
-            **data.model_dump(exclude_none=True),
+            txn_id, journal_id, **data.model_dump(exclude_none=True)
         )
         return updated  # type: ignore[return-value]
 
     async def delete(
-        self,
-        txn_id: uuid.UUID,
-        journal_id: uuid.UUID,
-        owner_id: uuid.UUID,
+        self, txn_id: uuid.UUID, journal_id: uuid.UUID, owner_id: uuid.UUID
     ) -> None:
         await self.get_or_404(txn_id, journal_id, owner_id)
         await self.txn_repo.delete(txn_id, journal_id)
         logger.info("Transaction %s deleted from journal %s", txn_id, journal_id)
+
     async def get_recent_transactions(
         self, journal_id: uuid.UUID, owner_id: uuid.UUID
-    ) -> "list[Transaction]":
-        journal = await self.journal_repo.get_by_id_and_owner(journal_id, owner_id)
-        if not journal:
-            raise HTTPException(status_code=404, detail="Journal not found.")
+    ) -> list[Transaction]:
+        await get_journal_or_404(self.journal_repo, journal_id, owner_id)
         return await self.txn_repo.get_recent_transactions(journal_id)

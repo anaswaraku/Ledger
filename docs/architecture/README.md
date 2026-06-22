@@ -11,7 +11,7 @@ The codebase is organized into four main directories under `app/`:
 1. **Domain Layer (`app/domain/`)**: Pure business logic (e.g., transaction entries, accounts, double-entry rules) with no external dependencies.
 2. **Application Layer (`app/application/`)**: Application services and use cases that coordinate business flows and invoke domain models.
 3. **Infrastructure Layer (`app/infrastructure/`)**: External concerns such as the database setup, migrations, and repositories for CRUD operations.
-4. **Presentation / API Layer (`app/api/` & `app/web/`)**: HTTP routing, request schemas (Pydantic), token validation, and web templates.
+4. **Presentation / API Layer (`app/api/`)**: HTTP routing, request schemas (Pydantic), token validation, and web templates (served from `app/templates/`).
 
 ---
 
@@ -105,20 +105,31 @@ flowchart TD
   - `auth.py`: Token authentication, registration, login endpoints.
   - `journals.py` & `transactions.py`: Entry/Journal creation and update routing.
   - `reports.py`: Retrieves cash flow, balance sheets, and ROI calculations.
-  - `files.py`: Manages CSV uploads and ZIP backups.
-  - `budgets.py` & `currencies.py`: Access routes to financial goals and settings.
+  - `files.py`: Manages CSV/JSON imports, journal backup (JSON) restore, and CSV exports.
+  - `budgets.py` & `currencies.py`: Access routes to financial goals and market price settings.
+  - `plot.py` (`/api/v1/name/`): HTMX-rendered Plotly chart fragments for account activity and market price visualisations.
+
+> [!NOTE]
+> `charts.py` exists in the source tree but is **not registered** in `app/main.py`. Its endpoints are therefore unreachable in the running application. It is documented in `docs/api/endpoints.md` Section 8 for completeness.
 
 #### 2. Application Services Layer (`app/application/services/`)
 * **Purpose**: Coordinates application workflows (the use-cases) and separates presentation mapping from data storage logic.
 * **Key Components**:
-  - `transaction_service.py`: Computes transaction creation, balancing checks, and coordinates with repositories.
+  - `transaction_service.py`: Computes transaction creation, double-entry balancing checks, and coordinates with repositories.
   - `report_service.py`: Orchestrates queries and transforms raw rows into ROI timelines or financial statement models.
-  - `file_service.py`: Handles raw CSV parser algorithms, file storage, and data imports.
+  - `file_service.py`: Handles CSV/JSON parsing, journal backup restore, CSV/JSON export, and account CSV imports.
+  - `account_service.py`: Manages account creation, listing, and hierarchical account validation.
+  - `auth_service.py`: Handles user registration, login credential verification, and JWT token issuance.
+  - `budget_service.py`: Creates and evaluates budget targets against actual spend amounts.
+  - `currency_service.py`: Manages market price records and performs currency conversion calculations.
+  - `journal_service.py`: Handles journal creation, retrieval, and ownership validation.
+  - `plot_service.py`: Aggregates account entry data and market prices for Plotly chart generation.
+  - `_utils.py`: **Shared service-layer utilities** — `get_journal_or_404()` (ownership guard), `convert_amount()` (currency conversion), and `deduplicate_rates()`. Eliminates repetition across all services.
 
 #### 3. Domain Core Layer (`app/domain/`)
 * **Purpose**: Contains the core domain representations of plain-text accounting systems. This layer is entirely independent of web frameworks (FastAPI) and ORMs (SQLAlchemy), making it easy to test.
 * **Key Components**:
-  - `models/`: Represents structures like `Transaction`, `TransactionEntry`, `Journal`, and `Account` models.
+  - `models/`: Represents ORM structures including `Transaction`, `TransactionEntry`, `Journal`, `Account`, `Budget`, `MarketPrice`, and `User` models.
   - `rules/double_entry.py`: Core PTA rule asserting that the sum of entry postings in a transaction must balance exactly to zero.
   - `rules/account_validation.py`: Normalizes and validates hierarchical account names (e.g. `assets:bank:checking`).
 
@@ -138,3 +149,9 @@ To prevent floating-point representation bugs in currency operations, Ledger Web
 ### 2. Performance Isolation (Sync vs Async Drivers)
 * **Async Engine**: The runtime application queries use `postgresql+asyncpg` to release the event loop during I/O database operations.
 * **Sync Engine**: Database migration operations run synchronously using `alembic` command execution and the synchronous `psycopg2` driver. This isolation ensures migration consistency without mixing async run loops in Alembic scripts.
+
+### 3. Unified Service Dependency Injection
+
+All service instances are constructed in `app/dependencies.py` as FastAPI async dependency functions (e.g., `get_account_service`, `get_report_service`). Every router uses `Depends()` to receive a pre-wired service — no manual `_make_service(db)` factory calls exist in any router file. This ensures:
+- Services can be overridden per-endpoint in tests without modifying router code.
+- A single `dependencies.py` file is the canonical wiring specification for all services.

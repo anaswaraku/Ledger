@@ -2,26 +2,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.account import AccountCreate, AccountResponse, RegisterEntryResponse
 from app.application.services.account_service import AccountService
-from app.dependencies import get_current_user
+from app.dependencies import get_account_service, get_current_user
 from app.domain.models.user import User
-from app.infrastructure.db.database import get_db
-from app.infrastructure.db.repositories.account_repo import AccountRepository
-from app.infrastructure.db.repositories.journal_repo import JournalRepository
-from app.infrastructure.db.repositories.transaction_repo import TransactionRepository
 
 router = APIRouter(prefix="/api/v1/accounts", tags=["Accounts"])
-
-
-def _make_service(db: AsyncSession) -> AccountService:
-    return AccountService(
-        account_repo=AccountRepository(db),
-        journal_repo=JournalRepository(db),
-        transaction_repo=TransactionRepository(db),
-    )
 
 
 @router.post(
@@ -32,10 +19,10 @@ def _make_service(db: AsyncSession) -> AccountService:
 )
 async def create_account(
     data: AccountCreate,
-    db: AsyncSession = Depends(get_db),
+    service: AccountService = Depends(get_account_service),
     current_user: User = Depends(get_current_user),
 ) -> AccountResponse:
-    account = await _make_service(db).create(
+    account = await service.create(
         owner_id=current_user.id,
         journal_id=data.journal_id,
         name=data.name,
@@ -51,10 +38,10 @@ async def create_account(
 )
 async def list_accounts(
     journal_id: UUID = Query(...),
-    db: AsyncSession = Depends(get_db),
+    service: AccountService = Depends(get_account_service),
     current_user: User = Depends(get_current_user),
 ) -> list[AccountResponse]:
-    return await _make_service(db).list_for_journal(  # type: ignore[return-value]
+    return await service.list_for_journal(  # type: ignore[return-value]
         owner_id=current_user.id,
         journal_id=journal_id,
     )
@@ -68,10 +55,10 @@ async def list_accounts(
 async def search_accounts(
     journal_id: UUID = Query(...),
     q: str = Query(..., min_length=1, description="Account name prefix"),
-    db: AsyncSession = Depends(get_db),
+    service: AccountService = Depends(get_account_service),
     current_user: User = Depends(get_current_user),
 ) -> list[AccountResponse]:
-    return await _make_service(db).search(  # type: ignore[return-value]
+    return await service.search(  # type: ignore[return-value]
         owner_id=current_user.id,
         journal_id=journal_id,
         prefix=q,
@@ -86,12 +73,12 @@ async def search_accounts(
 async def get_account_register(
     account_id: UUID,
     journal_id: UUID = Query(...),
-    db: AsyncSession = Depends(get_db),
+    service: AccountService = Depends(get_account_service),
     current_user: User = Depends(get_current_user),
 ) -> list[RegisterEntryResponse]:
-    """Phase 2: Returns transaction history for an account with running balance."""
-    return await _make_service(db).get_account_register(
+    """Returns transaction history for an account with running balance."""
+    return await service.get_account_register(
         owner_id=current_user.id,
         journal_id=journal_id,
-        account_id=account_id
+        account_id=account_id,
     )

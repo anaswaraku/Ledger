@@ -52,6 +52,17 @@ class ROIBalance(NamedTuple):
     cost_commodity: str
 
 
+def _cost_basis_expr():
+    """
+    SQLAlchemy CASE expression that signs the cost basis correctly:
+    negative entry amount (sell) → negative cost; positive (buy) → positive cost.
+    Defined once here and reused by both ROI query methods.
+    """
+    return case(
+        (TransactionEntry.amount < 0, -func.abs(TransactionEntry.cost_amount)),
+        else_=func.abs(TransactionEntry.cost_amount),
+    )
+
 class ReportRepository:
     """Data-access layer for financial reporting aggregations."""
 
@@ -206,11 +217,8 @@ class ReportRepository:
     async def get_roi_balances(self, journal_id: UUID, as_of: date) -> list[ROIBalance]:
         """Return balances of Asset accounts that have a cost basis, grouped by commodity and cost_commodity."""
         
-        # We subtract cost_amount when we sell (amount < 0), otherwise we add it.
-        cost_basis_expr = case(
-            (TransactionEntry.amount < 0, -func.abs(TransactionEntry.cost_amount)),
-            else_=func.abs(TransactionEntry.cost_amount)
-        )
+        # Signed cost basis: negative entry = sell (subtract), positive = buy (add).
+        cost_basis_expr = _cost_basis_expr()
 
         query = (
             select(
@@ -248,10 +256,7 @@ class ReportRepository:
         from sqlalchemy.dialects.postgresql import INTERVAL
         from sqlalchemy import text
 
-        cost_basis_expr = case(
-            (TransactionEntry.amount < 0, -func.abs(TransactionEntry.cost_amount)),
-            else_=func.abs(TransactionEntry.cost_amount),
-        )
+        cost_basis_expr = _cost_basis_expr()
 
         month_trunc = func.date_trunc("month", Transaction.date)
 

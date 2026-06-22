@@ -2,20 +2,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.schemas.journal import JournalCreate, JournalResponse, JournalUpdate
 from app.application.services.journal_service import JournalService
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_journal_service
 from app.domain.models.user import User
-from app.infrastructure.db.database import get_db
-from app.infrastructure.db.repositories.journal_repo import JournalRepository
 
 router = APIRouter(prefix="/api/v1/journals", tags=["Journals"])
-
-
-def _make_service(db: AsyncSession) -> JournalService:
-    return JournalService(JournalRepository(db))
 
 
 @router.post(
@@ -23,13 +16,13 @@ def _make_service(db: AsyncSession) -> JournalService:
     response_model=JournalResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new accounting journal",
-) 
+)
 async def create_journal(
     data: JournalCreate,
-    db: AsyncSession = Depends(get_db),
+    service: JournalService = Depends(get_journal_service),
     current_user: User = Depends(get_current_user),
 ) -> JournalResponse:
-    journal = await _make_service(db).create(
+    journal = await service.create(
         owner_id=current_user.id,
         name=data.name,
         description=data.description,
@@ -44,10 +37,10 @@ async def create_journal(
     summary="List all journals owned by the current user",
 )
 async def list_journals(
-    db: AsyncSession = Depends(get_db),
+    service: JournalService = Depends(get_journal_service),
     current_user: User = Depends(get_current_user),
 ) -> list[JournalResponse]:
-    return await _make_service(db).list_for_user(current_user.id)  # type: ignore[return-value]
+    return await service.list_for_user(current_user.id)  # type: ignore[return-value]
 
 
 @router.get(
@@ -57,10 +50,10 @@ async def list_journals(
 )
 async def get_journal(
     journal_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: JournalService = Depends(get_journal_service),
     current_user: User = Depends(get_current_user),
 ) -> JournalResponse:
-    return await _make_service(db).get_or_404(journal_id, current_user.id)  # type: ignore[return-value]
+    return await service.get_or_404(journal_id, current_user.id)  # type: ignore[return-value]
 
 
 @router.delete(
@@ -70,10 +63,10 @@ async def get_journal(
 )
 async def delete_journal(
     journal_id: UUID,
-    db: AsyncSession = Depends(get_db),
+    service: JournalService = Depends(get_journal_service),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    await _make_service(db).delete(journal_id, current_user.id)
+    await service.delete(journal_id, current_user.id)
 
 
 @router.patch(
@@ -84,10 +77,10 @@ async def delete_journal(
 async def update_journal(
     journal_id: UUID,
     data: JournalUpdate,
-    db: AsyncSession = Depends(get_db),
+    service: JournalService = Depends(get_journal_service),
     current_user: User = Depends(get_current_user),
 ) -> JournalResponse:
-    journal = await _make_service(db).update(
+    journal = await service.update(
         journal_id=journal_id,
         owner_id=current_user.id,
         **data.model_dump(exclude_none=True),
