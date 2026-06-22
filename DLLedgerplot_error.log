@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "/code/app/application/services/plot_service.py", line 60, in get_account_entry
-    import plotly.graph_objects as go
-ModuleNotFoundError: No module named 'plotly'
