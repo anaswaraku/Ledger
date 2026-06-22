@@ -11,9 +11,8 @@
 
 <section id="txn-section" style="display:none" class="space-y-8">
 
-    <!-- New Transaction Form -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-medium text-gray-900 mb-4">New Transaction</h3>
+        <h3 id="form-title" class="text-lg font-medium text-gray-900 mb-4">New Transaction</h3>
         <form id="create-txn-form" class="space-y-6">
             
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -88,10 +87,16 @@
                         Add Entry
                     </button>
                     
-                    <button type="submit"
-                        class="inline-flex justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 focus:outline-none transition-colors">
-                        Post Transaction
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" id="cancel-edit-btn" onclick="cancelEdit()"
+                            class="hidden inline-flex justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" id="submit-txn-btn"
+                            class="inline-flex justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-800 focus:outline-none transition-colors">
+                            Post Transaction
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -102,6 +107,23 @@
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="px-6 py-5 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h3 class="text-lg font-medium text-gray-900 leading-6">Transaction History</h3>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="setFilter('ALL')" id="filter-btn-ALL" class="filter-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-900 text-white border border-gray-900 transition-colors duration-200 cursor-pointer">
+                    All
+                </button>
+                <button type="button" onclick="setFilter('ASSET')" id="filter-btn-ASSET" class="filter-btn px-4 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
+                    Assets
+                </button>
+                <button type="button" onclick="setFilter('INCOME')" id="filter-btn-INCOME" class="filter-btn px-4 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
+                    Income
+                </button>
+                <button type="button" onclick="setFilter('EXPENSE')" id="filter-btn-EXPENSE" class="filter-btn px-4 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
+                    Expense
+                </button>
+                <button type="button" onclick="setFilter('LIABILITY')" id="filter-btn-LIABILITY" class="filter-btn px-4 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer">
+                    Liabilities
+                </button>
+            </div>
         </div>
         
         <div id="txn-list" class="p-0">
@@ -115,6 +137,9 @@
 <script>
     let selectedJournalId = null;
     let allAccounts = [];
+    let allTransactions = [];
+    let editingTxnId = null;
+    let currentFilter = 'ALL';
 
     function fetchJson(url, opts = {}) {
         const token = localStorage.getItem("access_token");
@@ -187,11 +212,11 @@
         container.appendChild(row);
     }
 
-    // Submit new transaction
+    // Submit new or edited transaction
     document.getElementById("create-txn-form").addEventListener("submit", function (e) {
         e.preventDefault();
         const msg = document.getElementById("txn-msg");
-        msg.innerHTML = '<span class="text-gray-500 text-sm">Posting...</span>';
+        msg.innerHTML = `<span class="text-gray-500 text-sm">${editingTxnId ? 'Updating...' : 'Posting...'}</span>`;
         
         const accountIds = [...document.querySelectorAll('[name="account_id[]"]')].map(s => s.value);
         const amounts = [...document.querySelectorAll('[name="amount[]"]')].map(i => i.value);
@@ -213,26 +238,48 @@
         });
 
         const body = {
-            journal_id: selectedJournalId,
             date: document.getElementById("txn-date").value,
             payee: document.getElementById("txn-payee").value || null,
             description: document.getElementById("txn-desc").value || null,
             entries,
         };
 
-        fetchJson("/api/v1/transactions/", { method: "POST", body: JSON.stringify(body) }).then(data => {
+        if (!editingTxnId) {
+            body.journal_id = selectedJournalId;
+        }
+
+        const url = editingTxnId 
+            ? `/api/v1/transactions/${editingTxnId}?journal_id=${selectedJournalId}`
+            : "/api/v1/transactions/";
+        const method = editingTxnId ? "PATCH" : "POST";
+
+        fetchJson(url, { method, body: JSON.stringify(body) }).then(data => {
             if (data.id) {
-                msg.innerHTML = `<span class="text-green-600">Transaction posted successfully.</span>`;
+                msg.innerHTML = `<span class="text-green-600">Transaction ${editingTxnId ? 'updated' : 'posted'} successfully.</span>`;
+                
+                if (editingTxnId) {
+                    editingTxnId = null;
+                    document.getElementById("form-title").textContent = "New Transaction";
+                    document.getElementById("submit-txn-btn").textContent = "Post Transaction";
+                    document.getElementById("cancel-edit-btn").classList.add("hidden");
+                }
+                
                 e.target.reset();
+                
+                // Reset entries to 2 empty rows
+                const container = document.getElementById("entries-container");
+                container.innerHTML = "";
+                addEntryRow();
+                addEntryRow();
                 populateAccountSelects();
                 
                 // Show loading immediately
                 const listEl = document.getElementById("txn-list");
                 listEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
                 
+                setFilter('ALL');
                 loadTransactions();
             } else {
-                // Show validation detail
                 if (Array.isArray(data.detail)) {
                     msg.innerHTML = `<span class="text-red-600">${data.detail.map(d => d.msg).join("; ")}</span>`;
                 } else {
@@ -245,7 +292,6 @@
     function loadTransactions() {
         const listEl = document.getElementById("txn-list");
         if (listEl.innerHTML.indexOf("animate-spin") === -1 && listEl.innerHTML.trim() !== "") {
-            // Keep existing height but show loading state overlay if we're filtering
              listEl.innerHTML = '<div class="flex items-center justify-center py-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div></div>';
         }
         
@@ -255,7 +301,42 @@
         let url = "/api/v1/transactions/?journal_id=" + selectedJournalId;
         if (payee) url += "&payee=" + encodeURIComponent(payee);
         
-        fetchJson(url).then(renderTransactions);
+        fetchJson(url).then(txns => {
+            allTransactions = txns;
+            renderFilteredTransactions();
+        });
+    }
+
+    function renderFilteredTransactions() {
+        if (currentFilter === 'ALL') {
+            renderTransactions(allTransactions);
+        } else {
+            const filtered = allTransactions.filter(t => {
+                return t.entries.some(en => {
+                    const acc = allAccounts.find(a => a.id === en.account_id);
+                    return acc && acc.account_type === currentFilter;
+                });
+            });
+            renderTransactions(filtered);
+        }
+    }
+
+    function setFilter(filterType) {
+        currentFilter = filterType;
+        
+        const filterTypes = ['ALL', 'ASSET', 'INCOME', 'EXPENSE', 'LIABILITY'];
+        filterTypes.forEach(type => {
+            const btn = document.getElementById('filter-btn-' + type);
+            if (btn) {
+                if (type === filterType) {
+                    btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-semibold bg-gray-900 text-white border border-gray-900 transition-colors duration-200 cursor-pointer";
+                } else {
+                    btn.className = "filter-btn px-4 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 transition-colors duration-200 cursor-pointer";
+                }
+            }
+        });
+        
+        renderFilteredTransactions();
     }
 
     function renderTransactions(txns) {
@@ -301,7 +382,11 @@
                                 }).join("")}
                                 </ul>
                             </td>
-                            <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+                            <td class="relative whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium space-x-3">
+                                <button onclick="startEditTransaction('${t.id}')"
+                                    class="text-indigo-600 hover:text-indigo-900 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 mr-2">
+                                    Edit
+                                </button>
                                 <button onclick="deleteTransaction('${t.id}')"
                                     class="text-red-600 hover:text-red-900 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100">
                                     Delete
@@ -314,6 +399,76 @@
         el.innerHTML = tableHTML;
     }
 
+    function startEditTransaction(txnId) {
+        const txn = allTransactions.find(t => t.id === txnId);
+        if (!txn) return;
+
+        editingTxnId = txnId;
+
+        document.getElementById("form-title").textContent = "Edit Transaction";
+        document.getElementById("submit-txn-btn").textContent = "Update Transaction";
+        document.getElementById("cancel-edit-btn").classList.remove("hidden");
+
+        document.getElementById("create-txn-form").scrollIntoView({ behavior: 'smooth' });
+
+        document.getElementById("txn-date").value = txn.date;
+        document.getElementById("txn-payee").value = txn.payee || "";
+        document.getElementById("txn-desc").value = txn.description || "";
+
+        const container = document.getElementById("entries-container");
+        container.innerHTML = "";
+
+        txn.entries.forEach((en, idx) => {
+            const row = document.createElement("div");
+            row.className = "entry-row flex flex-col sm:flex-row gap-3 items-start sm:items-center";
+            
+            let deleteBtn = '<div class="w-8"></div>';
+            if (idx >= 2) {
+                deleteBtn = `
+                <button type="button" onclick="this.parentElement.remove()" class="w-8 h-8 inline-flex items-center justify-center text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 transition-colors">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>`;
+            }
+
+            row.innerHTML = `
+                <select name="account_id[]" class="entry-account flex-grow w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand bg-white" required>
+                    <option value="">-- account --</option>
+                    ${allAccounts.map(a => `<option value="${a.id}" ${a.id === en.account_id ? "selected" : ""}>${a.name} (${a.account_type})</option>`).join("")}
+                </select>
+                <input type="number" step="0.01" name="amount[]" value="${en.amount}" placeholder="amount" required
+                    class="w-full sm:w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
+                <input type="text" name="currency[]" value="${en.currency || 'USD'}" maxlength="10" size="5"
+                    class="w-full sm:w-20 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand text-center uppercase">
+                
+                <span class="text-gray-400 text-xs hidden sm:inline">at</span>
+                
+                <input type="number" step="0.0000000001" name="cost_amount[]" value="${en.cost_amount !== null && en.cost_amount !== undefined ? en.cost_amount : ''}" placeholder="cost"
+                    class="w-full sm:w-24 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand">
+                <input type="text" name="cost_currency[]" value="${en.cost_currency || ''}" placeholder="cur" maxlength="10" size="5"
+                    class="w-full sm:w-20 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand text-center uppercase">
+                ${deleteBtn}`;
+            container.appendChild(row);
+        });
+        
+        document.getElementById("txn-msg").innerHTML = "";
+    }
+
+    function cancelEdit() {
+        editingTxnId = null;
+        document.getElementById("create-txn-form").reset();
+        document.getElementById("form-title").textContent = "New Transaction";
+        document.getElementById("submit-txn-btn").textContent = "Post Transaction";
+        document.getElementById("cancel-edit-btn").classList.add("hidden");
+        
+        const container = document.getElementById("entries-container");
+        container.innerHTML = "";
+        addEntryRow();
+        addEntryRow();
+        populateAccountSelects();
+        document.getElementById("txn-msg").innerHTML = "";
+        setFilter('ALL');
+    }
+
     function deleteTransaction(txnId) {
         if (!confirm("Are you sure you want to delete this transaction?")) return;
         const token = localStorage.getItem("access_token");
@@ -322,7 +477,8 @@
             headers: { "Authorization": "Bearer " + token }
         }).then(r => {
             if (r.status === 204) {
-                document.getElementById("txn-row-" + txnId)?.remove();
+                allTransactions = allTransactions.filter(t => t.id !== txnId);
+                renderFilteredTransactions();
             } else {
                 alert("Error deleting transaction.");
             }

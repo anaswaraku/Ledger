@@ -76,3 +76,44 @@ def deduplicate_rates(missing: list[dict]) -> list[dict]:
         {"from": k[0], "to": k[1], "date": k[2], "transaction_count": v}
         for k, v in grouped.items()
     ]
+
+
+def check_duplicate_transaction(
+    date_val,
+    payee: str | None,
+    entries: list[dict],
+    existing_txns,
+    exclude_txn_id = None,
+) -> bool:
+    """
+    Check if any transaction in existing_txns is identical to the proposed transaction.
+    Identical means:
+      - same payee
+      - same number of entries
+      - matching (account_id, amount, currency) for all entries.
+    """
+    for txn in existing_txns:
+        if exclude_txn_id and txn.id == exclude_txn_id:
+            continue
+
+        if txn.payee != payee:
+            continue
+
+        if len(txn.entries) != len(entries):
+            continue
+
+        existing_set = set()
+        for e in txn.entries:
+            existing_set.add((e.account_id, e.amount.normalize(), e.commodity.strip().upper()))
+
+        new_set = set()
+        for e in entries:
+            amt = Decimal(str(e["amount"])).normalize()
+            curr = e.get("currency", "USD").strip().upper()
+            new_set.add((e["account_id"], amt, curr))
+
+        if existing_set == new_set:
+            return True
+
+    return False
+

@@ -114,6 +114,42 @@ class TransactionRepository:
         await self.db.refresh(txn)
         return txn
 
+    async def patch(
+        self,
+        txn_id: uuid.UUID,
+        journal_id: uuid.UUID,
+        **kwargs,
+    ) -> Transaction | None:
+        txn = await self.get_by_id(txn_id, journal_id)
+        if not txn:
+            return None
+
+        # Update metadata if present in kwargs
+        for field in ["date", "description", "payee", "code"]:
+            if field in kwargs:
+                setattr(txn, field, kwargs[field])
+
+        # Update entries if present in kwargs
+        if "entries_data" in kwargs:
+            entries_data = kwargs["entries_data"]
+            txn.entries.clear()
+            for entry in entries_data:
+                txn.entries.append(
+                    TransactionEntry(
+                        transaction_id=txn.id,
+                        account_id=entry["account_id"],
+                        amount=entry["amount"],
+                        commodity=entry.get("currency", "USD"),
+                        cost_amount=entry.get("cost_amount"),
+                        cost_commodity=entry.get("cost_currency"),
+                    )
+                )
+
+        await self.db.commit()
+        await self.db.refresh(txn)
+        return txn
+
+
     async def delete(
         self, txn_id: uuid.UUID, journal_id: uuid.UUID
     ) -> bool:

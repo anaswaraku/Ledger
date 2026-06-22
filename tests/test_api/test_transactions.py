@@ -285,3 +285,289 @@ class TestDeleteTransaction:
             headers=auth_headers,
         )
         assert get_resp.status_code == 404
+
+
+class TestUpdateTransaction:
+    async def test_put_metadata_success(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        create_resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-01",
+                "description": "Original desc",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "10.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-10.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        txn_id = create_resp.json()["id"]
+
+        resp = await async_client.put(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "date": "2026-05-02",
+                "description": "Updated desc",
+                "payee": "New Payee",
+                "code": "new-code",
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["date"] == "2026-05-02"
+        assert data["description"] == "Updated desc"
+        assert data["payee"] == "New Payee"
+        assert data["code"] == "new-code"
+
+    async def test_patch_metadata_success(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        create_resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-01",
+                "description": "Original desc",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "10.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-10.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        txn_id = create_resp.json()["id"]
+
+        # Patch only description
+        resp = await async_client.patch(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "description": "Patched description"
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["description"] == "Patched description"
+        assert data["date"] == "2026-05-01" # unchanged
+
+    async def test_patch_entries_success(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        create_resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-01",
+                "description": "Original",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "10.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-10.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        txn_id = create_resp.json()["id"]
+
+        # Patch entries
+        resp = await async_client.patch(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "25.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-25.00"},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert len(data["entries"]) == 2
+        amounts = [float(e["amount"]) for e in data["entries"]]
+        assert 25.00 in amounts
+        assert -25.00 in amounts
+
+    async def test_patch_imbalanced_entries_failure(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        create_resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-01",
+                "description": "Original",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "10.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-10.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        txn_id = create_resp.json()["id"]
+
+        resp = await async_client.patch(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "25.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-20.00"},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_patch_wrong_account_failure(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        create_resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-01",
+                "description": "Original",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "10.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-10.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        txn_id = create_resp.json()["id"]
+
+        resp = await async_client.patch(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "entries": [
+                    {"account_id": str(uuid.uuid4()), "amount": "25.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-25.00"},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_create_duplicate_transaction_failure(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        payload = {
+            "journal_id": test_accounts["journal_id"],
+            "date": "2026-05-10",
+            "description": "Unique description",
+            "payee": "Same Payee",
+            "entries": [
+                {"account_id": test_accounts["food_id"], "amount": "15.50"},
+                {"account_id": test_accounts["cash_id"], "amount": "-15.50"},
+            ],
+        }
+        
+        # First creation succeeds
+        resp1 = await async_client.post(
+            "/api/v1/transactions/",
+            json=payload,
+            headers=auth_headers,
+        )
+        assert resp1.status_code == 201
+
+        # Second creation with identical date, payee, entries fails with 409
+        payload2 = payload.copy()
+        payload2["description"] = "Different description"
+        resp2 = await async_client.post(
+            "/api/v1/transactions/",
+            json=payload2,
+            headers=auth_headers,
+        )
+        assert resp2.status_code == 409
+        assert "exists" in resp2.json()["detail"].lower()
+
+
+    async def test_patch_duplicate_transaction_failure(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        # Transaction A
+        resp_a = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-11",
+                "payee": "Payee X",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "30.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-30.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert resp_a.status_code == 201
+
+        # Transaction B (different entries)
+        resp_b = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-11",
+                "payee": "Payee Y",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "40.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-40.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert resp_b.status_code == 201
+        txn_b_id = resp_b.json()["id"]
+
+        # Attempt to patch Transaction B to match Transaction A
+        resp_patch = await async_client.patch(
+            f"/api/v1/transactions/{txn_b_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "payee": "Payee X",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "30.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-30.00"},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp_patch.status_code == 409
+
+    async def test_patch_no_conflict_with_self(
+        self, async_client: AsyncClient, auth_headers: dict, test_accounts: dict
+    ):
+        resp = await async_client.post(
+            "/api/v1/transactions/",
+            json={
+                "journal_id": test_accounts["journal_id"],
+                "date": "2026-05-12",
+                "payee": "Payee Self",
+                "entries": [
+                    {"account_id": test_accounts["food_id"], "amount": "50.00"},
+                    {"account_id": test_accounts["cash_id"], "amount": "-50.00"},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
+        txn_id = resp.json()["id"]
+
+        # Patch without changing duplicate fields (only updating description) should succeed
+        resp_patch = await async_client.patch(
+            f"/api/v1/transactions/{txn_id}",
+            params={"journal_id": test_accounts["journal_id"]},
+            json={
+                "description": "Updated self desc"
+            },
+            headers=auth_headers,
+        )
+        assert resp_patch.status_code == 200
+
+

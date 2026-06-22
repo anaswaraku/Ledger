@@ -90,6 +90,44 @@ class TransactionUpdate(BaseModel):
     code: str | None = None
 
 
+class TransactionPatch(BaseModel):
+    date: date_type | None = None
+    description: str | None = None
+    payee: str | None = None
+    code: str | None = None
+    entries: list[TransactionEntryCreate] | None = None
+
+    @field_validator("entries")
+    @classmethod
+    def validate_entries_double_entry(
+        _cls, entries: list[TransactionEntryCreate] | None,
+    ) -> list[TransactionEntryCreate] | None:
+        """
+        Validate that transaction entries satisfy double-entry balancing rules if provided.
+        """
+        if entries is None:
+            return entries
+
+        if len(entries) < 2:
+            raise ValueError(f"A transaction must have at least 2 entries, got {len(entries)}.")
+
+        balances: dict[str, Decimal] = {}
+        for e in entries:
+            if e.cost_amount is not None and e.cost_currency is not None:
+                cost_val = e.amount * abs(e.cost_amount)
+                curr = e.cost_currency.strip().upper()
+                balances[curr] = balances.get(curr, Decimal("0")) + cost_val
+            else:
+                curr = e.currency.strip().upper()
+                balances[curr] = balances.get(curr, Decimal("0")) + e.amount
+
+        for curr, total in balances.items():
+            if total != Decimal("0"):
+                raise ValueError(f"Transaction does not balance for currency {curr}. Imbalance: {total:+.10f}")
+        return entries
+
+
+
 class TransactionResponse(TransactionBase):
     id: UUID
     journal_id: UUID

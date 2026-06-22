@@ -133,7 +133,10 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         // Set date default to today
@@ -295,3 +298,4 @@
     }
 </script>
 {% endblock %}
+

@@ -121,12 +121,6 @@
             <a href="/transactions/import" class="elements">Upload
                 Transaction</a>
 
-            <!--Export-->
-            <p class="headings">Export Data</p>
-            <a href="#" onclick="exportData('accounts', 'csv')" class="elements">Export Accounts (CSV)</a>
-            <a href="#" onclick="exportData('transactions', 'csv')" class="elements">Export Transactions (CSV)</a>
-            <a href="#" onclick="exportData('all', 'zip')" class="elements text-indigo-600 font-medium">Export All (ZIP)</a>
-
 
         </nav>
         <div class="p-4 border-t border-gray-200">
@@ -165,8 +159,9 @@
                 
                 <div id="exportmenu"
                 class="hidden absolute right-0 mt-10 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50">
-                <button class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Accounts</button>
-                <button class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Transactions</button>
+                <button  onclick="exportData('accounts', 'csv')" class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Accounts</button>
+                <button onclick="exportData('transactions', 'csv')" class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Transactions</button>
+                <button onclick="exportData('all', 'zip')" class="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100">All</button>
                 </div>
                 <button hx-get="/journals" hx-target="body"
                     class="p-2 rounded-full text-blue-500 hover:bg-blue-100 hover:text-blue-900 transition-colors focus:outline-none flex items-center"

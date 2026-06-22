@@ -9,6 +9,7 @@ from app.api.v1.schemas.transaction import (
     TransactionCreate,
     TransactionResponse,
     TransactionUpdate,
+    TransactionPatch,
 )
 from app.application.services.account_service import AccountService
 from app.application.services.transaction_service import TransactionService
@@ -112,6 +113,27 @@ async def update_transaction(
         owner_id=current_user.id,
         data=data,
     )
+
+
+@router.patch(
+    "/{txn_id}",
+    response_model=TransactionResponse,
+    summary="Partially update an existing transaction (metadata and/or entries)",
+)
+async def patch_transaction(
+    txn_id: UUID,
+    journal_id: UUID = Query(...),
+    data: TransactionPatch = ...,
+    service: TransactionService = Depends(get_transaction_service),
+    current_user: User = Depends(get_current_user),
+) -> TransactionResponse:
+    return await service.patch(  # type: ignore[return-value]
+        txn_id=txn_id,
+        journal_id=journal_id,
+        owner_id=current_user.id,
+        data=data,
+    )
+
 
 
 @router.delete(

@@ -570,7 +570,78 @@ Execute and search double-entry transaction records. All endpoints require JWT a
     { "detail": "Transaction not found." }
     ```
 
-### 5.6 DELETE `/api/v1/transactions/{txn_id}`
+### 5.6 PATCH `/api/v1/transactions/{txn_id}`
+* **Summary**: Partially update an existing transaction (metadata and/or entries).
+* **Description**: Updates fields on a transaction. Supports optional partial updates of metadata (date, description, payee, code). Can also update the transaction's entries if a list is provided in `entries`. Updated entries must contain at least two entries and balance to net-zero (debits == credits).
+* **Auth**: Required.
+* **Path Parameters**:
+  - `txn_id` (UUID, Required): ID of the transaction to update.
+* **Query Parameters**:
+  - `journal_id` (UUID, Required)
+* **Request Body**:
+  ```json
+  {
+    "date": "2026-06-19",
+    "description": "string",
+    "payee": "string",
+    "code": "string",
+    "entries": [
+      {
+        "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "amount": 25.0,
+        "currency": "USD"
+      },
+      {
+        "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "amount": -25.0,
+        "currency": "USD"
+      }
+    ]
+  }
+  ```
+* **Success Response (200 OK)**:
+  ```json
+  {
+    "date": "2026-06-19",
+    "description": "string",
+    "payee": "string",
+    "code": "string",
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "journal_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "created_at": "2026-06-19T11:42:13.610Z",
+    "entries": [
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "transaction_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "amount": 25.0,
+        "currency": "USD"
+      },
+      {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "transaction_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "account_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "amount": -25.0,
+        "currency": "USD"
+      }
+    ]
+  }
+  ```
+* **Error Responses**:
+  - `401 Unauthorized`:
+    ```json
+    { "detail": "Not authenticated" }
+    ```
+  - `404 Not Found` — Transaction not found:
+    ```json
+    { "detail": "Transaction not found." }
+    ```
+  - `422 Unprocessable Content` — Imbalanced entries or missing fields:
+    ```json
+    { "detail": "Transaction does not balance for currency USD. Imbalance: +5.00" }
+    ```
+
+### 5.7 DELETE `/api/v1/transactions/{txn_id}`
 * **Summary**: Delete a transaction and all its entries.
 * **Description**: Permanently deletes a transaction and all associated ledger entries. The transaction must exist in the specified journal, and the user must own the journal.
 * **Auth**: Required.
